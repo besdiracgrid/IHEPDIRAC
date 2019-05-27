@@ -59,3 +59,8 @@ for t in args:
           gLogger.warn('%s: %s' % (lfn, reason))
 
     gLogger.notice('Updated file statuses to "Unused" for %d file(s)' % len(lfns))
+
+    result = tc.setTransformationParameter(transID['Value'], 'Status', 'Flush')
+    if not result['OK']:
+        gLogger.error('Can not flush transformation: %s' % result['Message'])
+        continue
