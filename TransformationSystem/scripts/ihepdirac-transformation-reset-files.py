@@ -5,8 +5,8 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.registerSwitch( 'g:', 'groupSize=', 'Group size for each task')
-Script.setUsageMessage('%s [option|cfgfile] MetaTransfer SourceSE DestSE' % Script.scriptName)
+Script.registerSwitch('t:', 'status=', 'Files status to be reset (default to "Problematic")')
+Script.setUsageMessage('{0} [option|cfgfile] TransID1 [TransID2 ...]\nExample: {0} -t Problematic,Assigned 123 456'.format(Script.scriptName))
 Script.parseCommandLine(ignoreErrors = False)
 
 from DIRAC.TransformationSystem.Client.Transformation import Transformation
@@ -14,43 +14,48 @@ from DIRAC.TransformationSystem.Client.TransformationClient import Transformatio
 
 args = Script.getPositionalArgs()
 
-if len(args) != 3:
+if len(args) == 0:
     Script.showHelp()
     exit(1)
 
-metaTransfer = args[0]
-fromSE = args[1]
-toSE = args[2]
 
-groupSize = 100
+status = ['Problematic']
+
+switches = Script.getUnprocessedSwitches()
 for switch in switches:
-    if switch[0] == 'g' or switch[0] == 'groupSize':
-        groupSize = int(switch[1])
+    if switch[0] == 't' or switch[0] == 'status':
+        status = switch[1].split(',')
+        status = [s.strip() for s in status]
 
-t = Transformation( )
-tc = TransformationClient( )
-t.setTransformationName(metaTransfer) # Must be unique
-t.setTransformationGroup("Transfer")
-t.setType("Transfer-JUNO")
-#t.setPlugin("Standard") # Not needed. The default is 'Standard'
-t.setDescription("Juno Data Transfer")
-t.setLongDescription("Juno Data Transfer") # Mandatory
-t.setGroupSize(groupSize) # Here you specify how many files should be grouped within he same request, e.g. 100
+tc = TransformationClient()
 
-transBody = [ ( "ReplicateAndRegister", { "SourceSE": fromSE, "TargetSE": toSE }) ]
+for t in args:
+    res = tc.getTransformation(t)
+    if not res['OK']:
+        gLogger.error('Failed to get transformation information for %s: %s' % (t, res['Message']))
+        continue
 
-t.setBody(transBody)
+    selectDict = {'TransformationID': res['Value']['TransformationID']}
+    if status:
+        selectDict['Status'] = status
+    res = tc.getTransformationFiles(condDict=selectDict)
+    if not res['OK']:
+        gLogger.error('Failed to get transformation files: %s' % res['Message'])
+        continue
+    if not res['Value']:
+        gLogger.debug('No file found for transformation %s' % t)
+        continue
 
-result = t.addTransformation() # Transformation is created here
-if not result['OK']:
-    gLogger.error('Can not add transformation: %s' % result['Message'])
-    exit(2)
+    lfns = [f['LFN'] for f in res['Value']]
 
-t.setStatus("Active")
-t.setAgentType("Automatic")
-transID = t.getTransformationID()
+    gLogger.notice('Reset files for status: %s' % status)
+    res = tc.setFileStatusForTransformation(t, 'Unused', lfns)
+    if not res['OK']:
+        gLogger.error('Failed to reset file status: %s' % res['Message'])
+        continue
+    if 'Failed' in res['Value']:
+        gLogger.warn('Could not reset some files: ')
+        for lfn, reason in res['Value']['Failed'].items():
+          gLogger.warn('%s: %s' % (lfn, reason))
 
-result = tc.createTransformationInputDataQuery(transID['Value'], {'juno_transfer': metaTransfer})
-if not result['OK']:
-    gLogger.error('Can not create query to transformation: %s' % result['Message'])
-    exit(2)
+    gLogger.notice('Updated file statuses to "Unused" for %d file(s)' % len(lfns))

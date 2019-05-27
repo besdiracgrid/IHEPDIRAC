@@ -23,6 +23,8 @@ fromSE = args[1]
 toSE = args[2]
 
 groupSize = 100
+
+switches = Script.getUnprocessedSwitches()
 for switch in switches:
     if switch[0] == 'g' or switch[0] == 'groupSize':
         groupSize = int(switch[1])
