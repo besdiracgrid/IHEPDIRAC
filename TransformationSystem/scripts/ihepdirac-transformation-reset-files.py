@@ -5,8 +5,12 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
+Script.setUsageMessage('''Reset files in transformation with specified status
+
+{0} [option|cfgfile] TransID1 [TransID2 ...]
+
+Example: {0} -t Problematic,Assigned 123 456'''.format(Script.scriptName))
 Script.registerSwitch('t:', 'status=', 'Files status to be reset (default to "Problematic")')
-Script.setUsageMessage('{0} [option|cfgfile] TransID1 [TransID2 ...]\nExample: {0} -t Problematic,Assigned 123 456'.format(Script.scriptName))
 Script.parseCommandLine(ignoreErrors = False)
 
 from DIRAC.TransformationSystem.Client.Transformation import Transformation
@@ -60,7 +64,7 @@ for t in args:
 
     gLogger.notice('Updated file statuses to "Unused" for %d file(s)' % len(lfns))
 
-    result = tc.setTransformationParameter(transID['Value'], 'Status', 'Flush')
+    result = tc.setTransformationParameter(t, 'Status', 'Flush')
     if not result['OK']:
         gLogger.error('Can not flush transformation: %s' % result['Message'])
         continue

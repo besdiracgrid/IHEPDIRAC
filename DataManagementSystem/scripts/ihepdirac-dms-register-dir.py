@@ -6,10 +6,12 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
+Script.setUsageMessage('''Register SE files under directory to DFC. Files must be locally readable
+
+%s [option|cfgfile] DFCDir LocalDir SE''' % Script.scriptName)
 Script.registerSwitch( 'e', 'existCheck', 'Check if file exists')
 Script.registerSwitch( 'q:', 'querySkip=', 'Skip files in the meta query')
 Script.registerSwitch( 'b:', 'bufferSize=', 'Register buffer size, default to 100')
-Script.setUsageMessage('%s [option|cfgfile] LocalDir SE' % Script.scriptName)
 Script.parseCommandLine(ignoreErrors = False)
 
 from DIRAC.Core.Utilities.Adler import fileAdler
@@ -21,12 +23,16 @@ fcc = FileCatalogClient('DataManagement/FileCatalog')
 
 args = Script.getPositionalArgs()
 
-if len(args) != 2:
+if len(args) != 3:
     Script.showHelp()
     exit(1)
 
-inDir = args[0]
-toSE = args[1]
+dfcDir = args[0]
+if (not args[1]) or args[1].endswith(os.sep):
+    localDir = args[1]
+else:
+    localDir = args[1] + os.sep
+toSE = args[2]
 
 lfnQuery = []
 existCheck = False
@@ -44,19 +50,20 @@ for switch in switches:
 
 lfnQuery = set(lfnQuery)
 
-lfnPrefix = '/juno/lustre'
-inDirDFC = lfnPrefix+inDir
-
 counter = 0
 
 dm = DataManager()
 fileTupleBuffer = []
-for root, dirs, files in os.walk(inDir):
+for root, dirs, files in os.walk(localDir):
     for f in files:
         counter += 1
 
         fullFn = os.path.join(root, f)
-        lfn = lfnPrefix+fullFn
+        if not fullFn.startswith(localDir):
+            gLogger.error('%s does not start with %s' % (fullFn, localDir))
+            continue
+        lastPart = fullFn[len(localDir):]
+        lfn = os.path.join(dfcDir, lastPart)
 
         if lfn in lfnQuery:
             if counter%1000 == 0:
@@ -76,6 +83,7 @@ for root, dirs, files in os.walk(inDir):
         fileTuple = ( lfn, fullFn, size, toSE, guid, adler32 )
         fileTupleBuffer.append(fileTuple)
         gLogger.debug('Register to lfn: %s' % lfn)
+        gLogger.debug('fileTuple: %s' % (fileTuple,))
 
         if len(fileTupleBuffer) >= bufferSize:
             result = dm.registerFile( fileTupleBuffer )

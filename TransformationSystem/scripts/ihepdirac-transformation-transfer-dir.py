@@ -5,7 +5,9 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('%s [option|cfgfile] TransferName LFN SourceSE DestSE' % Script.scriptName)
+Script.setUsageMessage('''Start transfer of all files under directory with transformation system
+
+%s [option|cfgfile] TransferName DFCDir SourceSE DestSE''' % Script.scriptName)
 Script.parseCommandLine(ignoreErrors = False)
 
 from DIRAC.TransformationSystem.Client.Transformation import Transformation

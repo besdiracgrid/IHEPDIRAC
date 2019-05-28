@@ -6,7 +6,11 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-usageMsg = '{0} [option|cfgfile] DFCDir LocalDir SE\nExample: {0} /juno/user/u/username/data1 /junofs/users/username/data1 IHEP-STORM'.format(Script.scriptName)
+usageMsg = '''Add all the files under specified directory to SE
+
+{0} [option|cfgfile] DFCDir LocalDir SE
+
+Example: {0} /juno/user/u/username/data1 /junofs/users/username/data1 IHEP-STORM'''.format(Script.scriptName)
 Script.setUsageMessage(usageMsg)
 Script.parseCommandLine(ignoreErrors = False)
 

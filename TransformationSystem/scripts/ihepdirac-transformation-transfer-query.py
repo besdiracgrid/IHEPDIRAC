@@ -5,8 +5,11 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
+Script.setUsageMessage('''Start transfer using query with transformation system
+
+%s [option|cfgfile] MetaTransfer SourceSE DestSE''' % Script.scriptName)
+Script.registerSwitch( 't:', 'transformationName=', 'Specify transformation name, or use the query name')
 Script.registerSwitch( 'g:', 'groupSize=', 'Group size for each task')
-Script.setUsageMessage('%s [option|cfgfile] MetaTransfer SourceSE DestSE' % Script.scriptName)
 Script.parseCommandLine(ignoreErrors = False)
 
 from DIRAC.TransformationSystem.Client.Transformation import Transformation
@@ -23,15 +26,18 @@ fromSE = args[1]
 toSE = args[2]
 
 groupSize = 100
+transformationName = metaTransfer
 
 switches = Script.getUnprocessedSwitches()
 for switch in switches:
     if switch[0] == 'g' or switch[0] == 'groupSize':
         groupSize = int(switch[1])
+    if switch[0] == 't' or switch[0] == 'transformationName':
+        transformationName = int(switch[1])
 
 t = Transformation( )
 tc = TransformationClient( )
-t.setTransformationName(metaTransfer) # Must be unique
+t.setTransformationName(transformationName) # Must be unique
 t.setTransformationGroup("Transfer")
 t.setType("Transfer-JUNO")
 #t.setPlugin("Standard") # Not needed. The default is 'Standard'

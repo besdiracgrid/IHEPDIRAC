@@ -6,7 +6,9 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-usageMsg = '{0} [option|cfgfile] DFCDir'.format(Script.scriptName)
+usageMsg = '''Remove all the files and directories from SE and DFC under specified directory
+
+{0} [option|cfgfile] DFCDir'''.format(Script.scriptName)
 Script.setUsageMessage(usageMsg)
 Script.parseCommandLine(ignoreErrors = False)
 
