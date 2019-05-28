@@ -6,7 +6,7 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-usageMsg = '''Add all the files under specified directory to SE
+usageMsg = '''Add all the files under specified directory to SE and DFC
 
 {0} [option|cfgfile] DFCDir LocalDir SE
 

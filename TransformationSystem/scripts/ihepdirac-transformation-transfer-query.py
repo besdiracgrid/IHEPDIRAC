@@ -5,7 +5,7 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('''Start transfer using query with transformation system
+Script.setUsageMessage('''Start transfer according to DFC query with transformation system
 
 %s [option|cfgfile] MetaTransfer SourceSE DestSE''' % Script.scriptName)
 Script.registerSwitch( 't:', 'transformationName=', 'Specify transformation name, or use the query name')

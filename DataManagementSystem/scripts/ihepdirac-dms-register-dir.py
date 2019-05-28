@@ -6,7 +6,7 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('''Register SE files under directory to DFC. Files must be locally readable
+Script.setUsageMessage('''Register SE files under specified directory to DFC. Files must be locally readable
 
 %s [option|cfgfile] DFCDir LocalDir SE''' % Script.scriptName)
 Script.registerSwitch( 'e', 'existCheck', 'Check if file exists')
