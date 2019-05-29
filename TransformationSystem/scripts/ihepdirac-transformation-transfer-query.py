@@ -33,7 +33,7 @@ for switch in switches:
     if switch[0] == 'g' or switch[0] == 'groupSize':
         groupSize = int(switch[1])
     if switch[0] == 't' or switch[0] == 'transformationName':
-        transformationName = int(switch[1])
+        transformationName = switch[1]
 
 t = Transformation( )
 tc = TransformationClient( )
