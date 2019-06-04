@@ -9,7 +9,7 @@ Script.setUsageMessage('''Start transfer according to DFC query with transformat
 
 {0} [option|cfgfile] TransformationName MetaTransfer SourceSE DestSE
 
-Example: {0} Meassurements_DAQ_JINR juno_transfer=PmtCharacterization/container_data/Meassurements_DAQ IHEP-STORM JINR-JUNO'''.format(Script.scriptName))
+Example: {0} Meassurements_DAQ_JINR -t Transfer-JUNO juno_transfer=PmtCharacterization/container_data/Meassurements_DAQ IHEP-STORM JINR-JUNO'''.format(Script.scriptName))
 Script.registerSwitch( 't:', 'transformationType=', 'Specify transformation type')
 Script.registerSwitch( 'g:', 'groupSize=', 'Group size for each task')
 Script.parseCommandLine(ignoreErrors = False)
