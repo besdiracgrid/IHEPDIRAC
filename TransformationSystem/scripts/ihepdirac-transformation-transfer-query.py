@@ -7,7 +7,10 @@ from DIRAC.Core.Base import Script
 
 Script.setUsageMessage('''Start transfer according to DFC query with transformation system
 
-%s [option|cfgfile] MetaTransfer SourceSE DestSE''' % Script.scriptName)
+{0} [option|cfgfile] MetaTransfer SourceSE DestSE
+
+MetaTransfer is the metadata value of "juno_transfer"
+Example: {0} PmtCharacterization/container_data/Meassurements_DAQ IHEP-STORM JINR-JUNO'''.format(Script.scriptName))
 Script.registerSwitch( 't:', 'transformationName=', 'Specify transformation name, or use the query name')
 Script.registerSwitch( 'g:', 'groupSize=', 'Group size for each task')
 Script.parseCommandLine(ignoreErrors = False)
