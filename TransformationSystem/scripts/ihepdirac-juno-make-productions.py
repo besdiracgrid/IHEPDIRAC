@@ -339,8 +339,9 @@ class ProdChain(object):
         maxNumberOfTasks = self.__param['numberOfTasks'],
     )
 
+    gLogger.notice('Create transformation for "{0}"'.format(application))
+
     if self.__param['dryrun']:
-      gLogger.notice('Create: {0}'.format(stepArg))
       return
 
     prodStep = ProdStep(**stepArg)
@@ -353,7 +354,7 @@ class ProdChain(object):
   def createAllTransformations(self):
     for tag in self.__param['tags']:
       tagParam = self.__getTagParam(tag)
-      gLogger.notice('Tag param: {0}'.format(tagParam))
+      gLogger.notice('Tag "{0}" with param: {1}'.format(tag, tagParam))
 
       for step in ['detsim', 'elecsim', 'calib', 'rec']:
         if step not in self.__param['workflow']:
