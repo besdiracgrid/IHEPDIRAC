@@ -89,6 +89,7 @@ class Param(object):
       if key not in self.__param or not self.__param[key]:
         raise Exception('Param "{0}" must be specified'.format(key))
     self.__param.setdefault('prodName', 'JUNOProd')
+    self.__param.setdefault('transGroup', 'JUNO-Prod')
     self.__param.setdefault('outputLocation', 'user')
     self.__param.setdefault('outputSE', 'IHEP-STORM')
     self.__param.setdefault('outputMode', 'closest')

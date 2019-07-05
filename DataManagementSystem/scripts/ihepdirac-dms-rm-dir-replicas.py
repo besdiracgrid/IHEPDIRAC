@@ -6,19 +6,20 @@ import sys
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-usageMsg = '''Remove all the files and directories from SE and DFC under specified directory
+usageMsg = '''Remove specified replica from SE under specified directory
 
-{0} [option|cfgfile] DFCDir'''.format(Script.scriptName)
+{0} [option|cfgfile] DFCDir SE'''.format(Script.scriptName)
 Script.setUsageMessage(usageMsg)
 Script.parseCommandLine(ignoreErrors = False)
 
 args = Script.getPositionalArgs()
 
-if len(args) != 1:
+if len(args) != 2:
     Script.showHelp()
     exit(1)
 
 dfcDir = args[0]
+SE = args[1]
 
 
 from DIRAC.Resources.Catalog.FileCatalogClient import FileCatalogClient
@@ -31,7 +32,7 @@ dm = DataManager()
 counterFile = 0
 counterDir = 0
 
-def removeDir(d):
+def removeFromDir(d):
     global counterFile
     global counterDir
 
@@ -43,18 +44,16 @@ def removeDir(d):
     if result['Value']['Successful'][d]['Files']:
         files = result['Value']['Successful'][d]['Files']
         fileNumber = len(files)
-        gLogger.notice('Removing {0} files from "{0}"'.format(fileNumber, d))
+        gLogger.notice('Removing {0} replicas from "{1}"'.format(fileNumber, d))
         counterFile += fileNumber
-        dm.removeFile(files)
+        dm.removeReplica(SE, files)
 
     if result['Value']['Successful'][d]['SubDirs']:
         for subdir in result['Value']['Successful'][d]['SubDirs']:
-            removeDir(subdir)
+            removeFromDir(subdir)
 
-    gLogger.notice('Removing dir: %s' % d)
     counterDir += 1
-    fcc.removeDirectory(d)
 
-removeDir(dfcDir)
+removeFromDir(dfcDir)
 
 gLogger.notice('%s directories and %s files deleted' % (counterDir, counterFile))
