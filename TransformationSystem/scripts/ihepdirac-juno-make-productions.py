@@ -315,8 +315,15 @@ class ProdChain(object):
   def createStep(self, application, tag, tagParam, transType, prevApp=None, isGen=False):
     transID = self.__getTransID(tag, application)
     if transID:
-      gLogger.notice('Transformation already exists for "{0}" with ID {1}'.format(self.__getOutputPath(tag, application), transID))
+      gLogger.error('{0}: Transformation already exists for with ID {1} on {2}'.format(application, transID, self.__getOutputPath(tag, application)))
       return
+
+    inputMeta = {}
+    if prevApp:
+      inputMeta = self.__getMeta(tag, prevApp)
+      if 'transID' not in inputMeta:
+        gLogger.error('{0}: Transformation not found for previous application "{1}"'.format(application, prevApp))
+        return
 
     step_mode = self.__param.get(application+'-mode', '').format(**tagParam)
     extraArgs = '{0} {1} "{2}"'.format(self.__param['evtmax'], self.__param['seed'], step_mode)
@@ -339,17 +346,20 @@ class ProdChain(object):
         maxNumberOfTasks = self.__param['numberOfTasks'],
     )
 
-    gLogger.notice('Create transformation for "{0}"'.format(application))
+    gLogger.notice('{0}: Create transformation...'.format(application))
 
     if self.__param['dryrun']:
-      return
+      transID = 'fake'
+    else:
+      prodStep = ProdStep(**stepArg)
+      prodStep.createJob()
+      transID = prodStep.createTransformation()
 
-    prodStep = ProdStep(**stepArg)
-    prodStep.createJob()
-    transID = prodStep.createTransformation()
     self.__transIDs[tag] = {}
     self.__transIDs[tag][application] = transID
-    self.__setMeta(tag, application)
+
+    if not self.__param['dryrun']:
+      self.__setMeta(tag, application)
 
   def createAllTransformations(self):
     for tag in self.__param['tags']:
