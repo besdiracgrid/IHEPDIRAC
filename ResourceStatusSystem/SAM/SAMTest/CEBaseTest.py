@@ -34,7 +34,7 @@ class CEBaseTest( TestBase ):
     self.vo = self.args.get( 'VO' )
     self.testType = self.args[ 'TestType' ]
     self.executable = self.args[ 'executable' ]
-    self.__logPath = '/opt/dirac/pro/IHEPDIRAC/ResourceStatusSystem/SAM/log'
+    self.__logPath = '/opt/dirac/work/ResourceStatus/SAMTestAgent/SAM/log'
     self.__scriptPath = '/opt/dirac/pro/IHEPDIRAC/ResourceStatusSystem/SAM/sam_script'
 
     if 'WMSAdministrator' in self.apis:
