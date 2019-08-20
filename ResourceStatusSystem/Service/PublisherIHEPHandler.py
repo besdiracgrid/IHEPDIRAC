@@ -12,7 +12,7 @@ from types    import NoneType
 # DIRAC
 from DIRAC                                                      import gLogger, S_OK, gConfig, S_ERROR
 from DIRAC.Core.DISET.RequestHandler                            import RequestHandler
-from DIRAC.ResourceStatusSystem.Utilities                       import CSHelpers
+from IHEPDIRAC.ResourceStatusSystem.Utilities                   import CSHelpers
 from DIRAC.ConfigurationSystem.Client.Helpers import Registry
 from DIRAC.ResourceStatusSystem.Client.ResourceStatusClient import ResourceStatusClient
 from IHEPDIRAC.ResourceStatusSystem.Client.ResourceManagementIHEPClient import ResourceManagementIHEPClient

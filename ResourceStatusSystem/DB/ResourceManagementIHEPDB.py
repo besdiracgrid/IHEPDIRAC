@@ -49,7 +49,7 @@ class ResourceManagementIHEPDB( object ):
 
   _tablesDB[ 'WorkNodeCache' ] = { 'Fields' :
                               {
-                               'Host'          : 'VARCHAR(32) NOT NULL',
+                               'Host'          : 'VARCHAR(128) NOT NULL',
                                'Site'          : 'VARCHAR(32) NOT NULL',
                                'Done'          : 'INTEGER NOT NULL DEFAULT 0',
                                'Failed'        : 'INTEGER NOT NULL DEFAULT 0',

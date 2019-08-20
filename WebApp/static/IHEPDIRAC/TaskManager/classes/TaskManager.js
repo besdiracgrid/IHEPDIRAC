@@ -163,7 +163,11 @@ Ext.define('IHEPDIRAC.TaskManager.classes.TaskManager', {
               fields : me.dataFields,
               scope : me,
               remoteSort : false,
-              autoLoad : true
+              autoLoad : true,
+              sorters : [{
+                    property : 'TaskID',
+                    direction : 'DESC'
+                  }]
             });
 
         // columns
@@ -375,8 +379,6 @@ Ext.define('IHEPDIRAC.TaskManager.classes.TaskManager', {
               pagingToolbar : me.pagingToolbar,
               scope : me
             });
-
-        me.grid.columns[1].setSortState("DESC");
 
 
         me.leftPanel.setGrid(me.grid);

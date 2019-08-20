@@ -7,7 +7,7 @@
 from DIRAC                                                         import S_OK, S_ERROR
 from DIRAC.Core.DISET.RPCClient                                    import RPCClient
 from DIRAC.ResourceStatusSystem.Command.Command                    import Command
-from DIRAC.ResourceStatusSystem.Utilities                          import CSHelpers
+from IHEPDIRAC.ResourceStatusSystem.Utilities                      import CSHelpers
 from IHEPDIRAC.ResourceStatusSystem.Client.ResourceManagementIHEPClient import ResourceManagementIHEPClient
 from DIRAC.Interfaces.API.DiracAdmin import DiracAdmin
 

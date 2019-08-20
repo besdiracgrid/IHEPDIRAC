@@ -1,5 +1,5 @@
 import math
-from DIRAC                                                         import S_OK
+from DIRAC                                                         import S_OK, gLogger
 from DIRAC.WorkloadManagementSystem.DB.JobDB import JobDB
 from DIRAC.ResourceStatusSystem.Command.Command                    import Command
 from IHEPDIRAC.ResourceStatusSystem.Client.ResourceManagementIHEPClient import ResourceManagementIHEPClient
@@ -33,6 +33,7 @@ class WorkNodeIHEPCommand( Command ):
                                                      failed = hostDict[ 'Failed' ],
                                                      efficiency = hostDict[ 'Efficiency' ] )
       if not resQuery[ 'OK' ]:
+        gLogger.error('WorkNodeIHEPCommand _storeCommand failed:', resQuery['Message'])
         return resQuery
     return S_OK()
 

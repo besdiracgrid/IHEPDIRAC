@@ -9,7 +9,7 @@ from datetime import datetime
 from DIRAC                                             import S_OK, gConfig, gLogger
 from DIRAC.Core.Base.AgentModule                       import AgentModule
 from DIRAC.Core.DISET.RPCClient                        import RPCClient
-from DIRAC.ResourceStatusSystem.Utilities              import CSHelpers
+from IHEPDIRAC.ResourceStatusSystem.Utilities          import CSHelpers
 from DIRAC.DataManagementSystem.Client.DataManager                 import DataManager
 from DIRAC.ResourceStatusSystem.Utilities import Utils
 from IHEPDIRAC.ResourceStatusSystem.Client.ResourceManagementIHEPClient import ResourceManagementIHEPClient

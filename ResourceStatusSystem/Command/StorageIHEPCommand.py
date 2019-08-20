@@ -8,7 +8,7 @@ import math
 from DIRAC                                                         import S_OK, gConfig
 from DIRAC.DataManagementSystem.DB.FileCatalogDB                   import FileCatalogDB
 from DIRAC.ResourceStatusSystem.Command.Command                    import Command
-from DIRAC.ResourceStatusSystem.Utilities                          import CSHelpers
+from IHEPDIRAC.ResourceStatusSystem.Utilities                      import CSHelpers
 from IHEPDIRAC.ResourceStatusSystem.Client.ResourceManagementIHEPClient import ResourceManagementIHEPClient
 
 
@@ -37,7 +37,6 @@ class StorageIHEPCommand( Command ):
     """
 
     for storageDict in result:
-      print storageDict
       resQuery = self.rmIHEPClient.addOrModifyStorageCache( sE = storageDict[ 'SE' ],
                                                         occupied = storageDict[ 'Occupied' ],
                                                         free = storageDict[ 'Free' ],

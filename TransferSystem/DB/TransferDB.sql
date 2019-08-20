@@ -32,7 +32,7 @@ create table TransferFileList (
   start_time datetime,
   finish_time datetime,
   status enum('new', 'transfer', 'finish', 'kill') not null,
-  error varchar(65535),
+  error mediumtext,
   index(status),
   foreign key (trans_req_id) references TransferRequest (id)
 ) ENGINE=InnoDB;

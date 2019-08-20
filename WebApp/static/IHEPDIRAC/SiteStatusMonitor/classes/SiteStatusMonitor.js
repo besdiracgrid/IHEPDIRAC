@@ -75,7 +75,7 @@ Ext.define('IHEPDIRAC.SiteStatusMonitor.classes.SiteStatusMonitor', {
 		};
 
 		var map = [['site', 'site'], ['type', 'type'], ['mask', 'mask'],
-				['vo', 'vo']]
+				['vo', 'vo']];
 
 		me.leftPanel = Ext.create('Ext.dirac.utils.DiracBaseSelector', {
 					scope : me,
@@ -273,14 +273,12 @@ Ext.define('IHEPDIRAC.SiteStatusMonitor.classes.SiteStatusMonitor', {
 						'text' : 'SAM Information',
 						'handler' : me.__oprShowSAMInformation,
 						'properties' : {
-							id : 'SAMInformation',
 							tooltip : 'Click to show SAM information.'
 						}
 					}, {
 						'text' : 'Host Information',
 						'handler' : me.__oprShowHostInformation,
 						'properties' : {
-							id : 'HostInformation',
 							tooltip : 'Click to show Host Job Information.'
 						}
 					}]
