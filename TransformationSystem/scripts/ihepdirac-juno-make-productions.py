@@ -100,18 +100,22 @@ class Param(object):
         self.__param.setdefault('outputMode', 'closest')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
-        self.__param.setdefault('moveGroupSize', '1')
-        self.__param.setdefault('moveFlavor', 'Moving')
+        self.__param.setdefault('moveFlavor', 'Replication')
+        self.__param.setdefault('movePlugin', 'Broadcast')
 
         self.__param['numberOfTasks'] = int(self.__param.get('njobs', '1'))
         self.__param['evtmax'] = int(self.__param.get('evtmax', '1'))
+        self.__param['moveGroupSize'] = int(self.__param.get('moveGroupSize', '1'))
+
         self.__param['site'] = parseList(self.__param.get('site', ''))
         self.__param['workflow'] = parseList(self.__param.get('workflow', ''))
         self.__param['moveType'] = parseList(self.__param.get('moveType', ''))
+        self.__param['moveSourceSE'] = parseList(self.__param.get('moveSourceSE', 'IHEP-STORM'))
+        self.__param['moveTargetSE'] = parseList(self.__param.get('moveTargetSE', 'IHEP-STORM'))
 
         self.__param['dryrun'] = parseBool(self.__param.get('dryrun', 'false'))
-        self.__param['runWorkflow'] = parseBool(self.__param.get('runWorkflow', 'true'))
-        self.__param['runMove'] = parseBool(self.__param.get('runMove', 'true'))
+        self.__param['ignoreWorkflow'] = parseBool(self.__param.get('ignoreWorkflow', 'false'))
+        self.__param['ignoreMove'] = parseBool(self.__param.get('ignoreMove', 'false'))
 
         if 'tag' in self.__param:
             self.__param['tags'] = [self.__param['tag']]
@@ -124,12 +128,14 @@ class Param(object):
 
 
 class ProdMove(object):
-    def __init__(self, transType, transGroup, transName='unknown', description='Production move',
-                             inputMeta={}, sourceSE='', targetSE='IHEP-STORM', groupSize=1):
+    def __init__(self, transType, transGroup, transName='unknown', flavour='Replication', description='Production move',
+                             plugin='Broadcast', inputMeta={}, sourceSE=[], targetSE='IHEP-STORM', groupSize=1):
         self.__transType = transType
         self.__transGroup = transGroup
         self.__transName = transName
+        self.__flavour = flavour
         self.__description = description
+        self.__plugin = plugin
         self.__inputMeta = inputMeta
         self.__sourceSE = sourceSE
         self.__targetSE = targetSE
@@ -148,12 +154,29 @@ class ProdMove(object):
         t.setGroupSize(self.__groupSize)
         if self.__transGroup:
             t.setTransformationGroup(self.__transGroup)
+        t.setPlugin(self.__plugin)
 
-        transBody = {'Moving': [("ReplicateAndRegister", {"SourceSE": sourceSE, "TargetSE": targetSE}),
-                                                    ("RemoveReplica", {"TargetSE": sourceSE})],
-                             'Replication': '',    # empty body
-                             }[flavour] if tBody is None else tBody
-        trans.setBody(transBody)
+        t.setSourceSE(self.__sourceSE)
+        t.setTargetSE(self.__targetSE)
+
+        transBody = []
+
+#        for tse in self.__targetSE:
+#            sse = list(set(self.__sourceSE) - set([tse]))
+#            transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(sse), "TargetSE": ','.join(tse)}))
+#
+#        if self.__flavour == 'Moving':
+#            for sse in self.__sourceSE:
+#                if sse in self.__targetSE:
+#                    continue
+#                gLogger.debug('Remove from SE: {0}'.format(sse))
+#                transBody.append(("RemoveReplica", {"TargetSE": ','.join(sse)}))
+
+        transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(self.__sourceSE), "TargetSE": ','.join(self.__targetSE)}))
+        if self.__flavour == 'Moving':
+            transBody.append(("RemoveReplica", {"TargetSE": ','.join(self.__sourceSE)}))
+
+        t.setBody(transBody)
 
 
         ########################################
@@ -168,7 +191,7 @@ class ProdMove(object):
 
         currtrans = t.getTransformationID()['Value']
 
-        if self.__inputMeta and not self.__isGen:
+        if self.__inputMeta:
             client = TransformationClient()
             res = client.createTransformationInputDataQuery(currtrans, self.__inputMeta)
             if not res['OK']:
@@ -373,7 +396,7 @@ class ProdChain(object):
             tagParam['momentum'] = '0'
         return tagParam
 
-    def createStep(self, application, tag, tagParam, transType, prevApp=None, isGen=False):
+    def createStep(self, application, tag, tagParam, transType, prevApp=None):
         transID = self.__getTransID(tag, application)
         if transID:
             gLogger.error('{0}: Transformation already exists for with ID {1} on {2}'.format(application, transID, self.__getOutputPath(tag, application)))
@@ -385,7 +408,7 @@ class ProdChain(object):
             if 'transID' not in inputMeta:
                 gLogger.error('{0}: Transformation not found for previous application "{1}"'.format(application, prevApp))
                 return
-            gLogger.notice('{0}: Input transformation {1}, "{2}"'.format(application, inputMeta['transID'], prevApp))
+            gLogger.notice('{0}: Input transformation "{1}" from "{2}"'.format(application, inputMeta['transID'], prevApp))
 
         step_mode = self.__param.get(application+'-mode', '').format(**tagParam)
         extraArgs = '{0} {1} "{2}"'.format(self.__param['evtmax'], self.__param['seed'], step_mode)
@@ -398,11 +421,11 @@ class ProdChain(object):
                 stepName = '{0}-{1}-{2}'.format(self.__prodPrefix, tag, application),
                 description = '{0} for {1} with tag {2}'.format(application, self.__param['process'], tag),
                 extraArgs = extraArgs,
-                inputMeta = self.__getMeta(tag, prevApp),
+                inputMeta = inputMeta,
                 outputPath = self.__getOutputPath(tag, application),
                 outputSE = self.__param['outputSE'],
                 outputPattern = '{0}-*.root'.format(application),
-                isGen = isGen,
+                isGen = prevApp is None,
                 site = self.__param.get('site'),
                 outputMode = self.__param['outputMode'],
                 maxNumberOfTasks = self.__param['numberOfTasks'],
@@ -417,24 +440,53 @@ class ProdChain(object):
             prodStep.createJob()
             transID = prodStep.createTransformation()
 
-        self.__transIDs[tag] = {}
+        self.__transIDs.setdefault(tag, {})
         self.__transIDs[tag][application] = transID
 
         if not self.__param['dryrun']:
             self.__setMeta(tag, application)
 
+    def createMove(self, application, tag, transType):
+        inputMeta = self.__getMeta(tag, application)
+        if 'transID' not in inputMeta:
+            gLogger.error('{0}-move: Transformation not found for application "{0}"'.format(application))
+            return
+        gLogger.notice('{0}-move: Input transformation "{1}" from "{0}"'.format(application, inputMeta['transID']))
+
+        moveArg = dict(
+                transType = transType,
+                transGroup = self.__param.get('transGroup'),
+                transName = '{0}-{1}-{2}-{3}'.format(self.__prodPrefix, tag, application, self.__param.get('moveFlavor')),
+                flavour = self.__param.get('moveFlavor'),
+                description = 'Move {0} for {1} with tag {2}'.format(application, self.__param['process'], tag),
+                plugin = self.__param['movePlugin'],
+                inputMeta = inputMeta,
+                sourceSE = self.__param['moveSourceSE'],
+                targetSE = self.__param['moveTargetSE'],
+                groupSize = self.__param['moveGroupSize'],
+        )
+
+        gLogger.notice('{0}-move: Create transformation...'.format(application))
+
+        if self.__param['dryrun']:
+            transID = 'dryrun'
+        else:
+            prodMove = ProdMove(**moveArg)
+            transID = prodMove.createTransformation()
+
     def createAllTransformations(self):
-        if self.__param['runWorkflow']:
-            for tag in self.__param['tags']:
+        for tag in self.__param['tags']:
+            if not self.__param['ignoreWorkflow']:
                 tagParam = self.__getTagParam(tag)
-                gLogger.notice('Tag "{0}" with param: {1}'.format(tag, tagParam))
+                gLogger.notice('\nTag "{0}" with param: {1}'.format(tag, tagParam))
 
                 for step in ['detsim', 'elecsim', 'calib', 'rec']:
                     if step not in self.__param['workflow']:
                         continue
 
+                    gLogger.notice('')
                     if step == 'detsim':
-                        self.createStep('detsim', tag, tagParam, 'MCSimulation-JUNO', None, True)
+                        self.createStep('detsim', tag, tagParam, 'MCSimulation-JUNO', None)
                     if step == 'elecsim':
                         self.createStep('elecsim', tag, tagParam, 'ElecSimulation-JUNO', 'detsim')
                     if step == 'calib':
@@ -442,8 +494,12 @@ class ProdChain(object):
                     if step == 'rec':
                         self.createStep('rec', tag, tagParam, 'DataReconstruction-JUNO', 'calib')
 
-        if self.__param['runMove']:
-            pass
+            if not self.__param['ignoreMove']:
+                for step in ['detsim', 'elecsim', 'calib', 'rec']:
+                    if step not in self.__param['moveType']:
+                        continue
+                    gLogger.notice('')
+                    self.createMove(step, tag, 'Replication-JUNO')
 
 
 def main():
