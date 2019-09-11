@@ -107,7 +107,7 @@ class CEBaseTest( TestBase ):
     proxyPath = proxyPath[ 'Value' ]
     oldProxy = os.environ.get( 'X509_USER_PROXY' )
     os.environ[ 'X509_USER_PROXY' ] = proxyPath
-    result = self.dirac.submit( job )
+    result = self.dirac.submitJob( job )
     if oldProxy is None:
       del os.environ[ 'X509_USER_PROXY' ]
     else:
@@ -178,7 +178,7 @@ class CEBaseTest( TestBase ):
 
 
   def __getJobOutput( self, jobID, vo ):
-    status = self.dirac.status( jobID )
+    status = self.dirac.getJobStatus( jobID )
     if not status[ 'OK' ]:
       return status
     status = status[ 'Value' ][ jobID ][ 'Status' ]
