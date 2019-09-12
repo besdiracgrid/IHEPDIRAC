@@ -120,6 +120,7 @@ class SAMTestAgent(AgentModule):
 
     threads = []
     for elementDict in elements:
+      gLogger.info( 'Start SAM test for %s with VO %s' % ( elementDict['ElementName'], elementDict.get('VO', []) ) )
       t = threading.Thread( target = self._execute, args = ( elementDict, ) )
       threads.append( t )
       t.start()
@@ -159,7 +160,7 @@ class SAMTestAgent(AgentModule):
 
   def _execute( self, elementDict ):
     elementName = elementDict[ 'ElementName' ]
-    vos = elementDict.get( 'VO' ) or []
+    vos = elementDict.get( 'VO', [] )
     utcNow = datetime.utcnow().replace( microsecond = 0 )
 
     # Return status of each Testtype

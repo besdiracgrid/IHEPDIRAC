@@ -4,8 +4,6 @@ A test class to test the access to ces.
 
 '''
 
-import subprocess, re
-from datetime import datetime
 from DIRAC import S_OK, S_ERROR, gConfig
 
 
