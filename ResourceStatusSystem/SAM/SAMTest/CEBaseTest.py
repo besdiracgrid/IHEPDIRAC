@@ -169,7 +169,7 @@ class CEBaseTest( TestBase ):
           else:
             resDict[ 'Status' ] = 'Unknown'
             resDict[ 'Log' ] = 'Test did not complete within the timeout of %d seconds, job status is %s' % ( self.timeout, status )
-        self.dirac.kill( jobID )
+        self.dirac.killJob( jobID )
 
     if not isFinish:
       return S_OK()
