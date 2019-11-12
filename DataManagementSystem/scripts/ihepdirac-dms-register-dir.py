@@ -10,7 +10,7 @@ Script.setUsageMessage('''Register SE files under specified directory to DFC. Fi
 
 {0} [option|cfgfile] DFCDir LocalDir SE
 
-Example: {0} /juno/lustre/junofs/PmtCharacterization/scan_data/soft/root_macros /junofs/PmtCharacterization/scan_data/soft/root_macros IHEP-STORM'''.format(Script.scriptName)
+Example: {0} /juno/lustre/junofs/PmtCharacterization/scan_data/soft/root_macros /junofs/PmtCharacterization/scan_data/soft/root_macros IHEP-STORM'''.format(Script.scriptName))
 Script.registerSwitch( 'e', 'existCheck', 'Check if file exists')
 Script.registerSwitch( 'q:', 'querySkip=', 'Skip files in the meta query')
 Script.registerSwitch( 'b:', 'bufferSize=', 'Register buffer size, default to 100')
