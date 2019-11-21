@@ -10,7 +10,7 @@ usageMsg = '''Remove specified replica from SE under specified directory
 
 {0} [option|cfgfile] DFCDir SE'''.format(Script.scriptName)
 Script.setUsageMessage(usageMsg)
-Script.parseCommandLine(ignoreErrors = False)
+Script.parseCommandLine(ignoreErrors=False)
 
 args = Script.getPositionalArgs()
 
@@ -32,19 +32,22 @@ dm = DataManager()
 counterFile = 0
 counterDir = 0
 
+
 def removeFromDir(d):
     global counterFile
     global counterDir
 
     result = fcc.listDirectory(d)
     if not result['OK']:
-        gLogger.error('Failed to list directory %s:' % (d, result['Message']))
+        gLogger.error('Failed to list directory %s: %s' %
+                      (d, result['Message']))
         return
 
     if result['Value']['Successful'][d]['Files']:
         files = result['Value']['Successful'][d]['Files']
         fileNumber = len(files)
-        gLogger.notice('Removing {0} replicas from "{1}"'.format(fileNumber, d))
+        gLogger.notice(
+            'Removing {0} replicas from "{1}"'.format(fileNumber, d))
         counterFile += fileNumber
         dm.removeReplica(SE, files)
 
@@ -54,6 +57,8 @@ def removeFromDir(d):
 
     counterDir += 1
 
+
 removeFromDir(dfcDir)
 
-gLogger.notice('%s directories and %s files deleted' % (counterDir, counterFile))
+gLogger.notice('%s directories and %s files deleted' %
+               (counterDir, counterFile))
