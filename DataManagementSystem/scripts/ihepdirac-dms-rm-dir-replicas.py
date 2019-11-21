@@ -43,11 +43,13 @@ def removeFromDir(d):
                       (d, result['Message']))
         return
 
+    gLogger.notice('Removing replicas from dir: %s' % d)
+
     if result['Value']['Successful'][d]['Files']:
         files = result['Value']['Successful'][d]['Files']
         fileNumber = len(files)
         gLogger.notice(
-            'Removing {0} replicas from "{1}"'.format(fileNumber, d))
+            'Removing replicas of {0} files from dir "{1}"'.format(fileNumber, d))
         counterFile += fileNumber
         dm.removeReplica(SE, files)
 

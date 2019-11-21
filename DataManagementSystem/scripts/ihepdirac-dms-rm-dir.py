@@ -42,10 +42,13 @@ def removeDir(d):
                       (d, result['Message']))
         return
 
+    gLogger.notice('Removing dir: %s' % d)
+
     if result['Value']['Successful'][d]['Files']:
         files = result['Value']['Successful'][d]['Files']
         fileNumber = len(files)
-        gLogger.notice('Removing {0} files from "{1}"'.format(fileNumber, d))
+        gLogger.notice(
+            'Removing {0} files from dir "{1}"'.format(fileNumber, d))
         counterFile += fileNumber
         dm.removeFile(files)
 
@@ -53,7 +56,6 @@ def removeDir(d):
         for subdir in result['Value']['Successful'][d]['SubDirs']:
             removeDir(subdir)
 
-    gLogger.notice('Removing dir: %s' % d)
     counterDir += 1
     fcc.removeDirectory(d)
 
