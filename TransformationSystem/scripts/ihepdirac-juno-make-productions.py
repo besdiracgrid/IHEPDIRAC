@@ -4,6 +4,7 @@
 
 import os
 import sys
+import re
 import ConfigParser
 
 from DIRAC import S_OK, S_ERROR, gLogger, exit
@@ -67,6 +68,12 @@ transGroup = JUNO_prod_test
 ; With this line enabled, the "tags" parameter will be ignored
 ;tag = e+_0.0MeV
 
+; Regular expression for parsing the tag. https://docs.python.org/3/howto/regex.html
+; Use group numbers "{0}", "{1}" in "detsim-mode"
+;tagParser = (.*)_(.*)MeV
+; Or use named groups "{particle}", "{momentum}" in "detsim-mode"
+;tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
+
 ; If outputType is "production", the root directory will be /juno/production
 ; If outputType is "user" or something else, the root directory will be under your user directory /juno/user/x/xxx
 ;outputType = production
@@ -118,6 +125,21 @@ workflow = detsim elecsim calib rec
 ;moveType = detsim elecsim calib rec
 moveType = detsim
 detsim-mode = gun --particles {particle} --momentums {momentum} --positions 0 0 0
+
+
+; The parameters in this section will overwrite what's in [all]
+[ChainNew]
+seed = 42
+evtmax = 5
+njobs = 2
+tags = e+_0.0MeV e+_1.398MeV e+_4.460MeV
+
+workDir = PositronNew01
+
+position = center
+workflow = detsim elecsim
+moveType = detsim elecsim
+detsim-mode = gun --particles {particle} --momentums {momentum} --positions 0 0 0
 '''
 
 
@@ -162,7 +184,7 @@ class Param(object):
         self.__param.update(self.__paramCmd)
         if 'process' in self.__param:
             self.__param.update(dict(config.items(self.__param['process'])))
-        self.__param.update(self.__paramCmd)
+        self.__param.update(self.__paramCmd)    # Update paramCmd again to overwrite ini
 
     def __processParam(self):
         def parseList(s):
@@ -182,6 +204,7 @@ class Param(object):
         self.__param.setdefault('outputType', 'user')
         self.__param.setdefault('outputSE', 'IHEP-STORM')
         self.__param.setdefault('outputMode', 'closest')
+        self.__param.setdefault('tagParser', '')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
         self.__param.setdefault('moveFlavor', 'Replication')
@@ -404,6 +427,8 @@ class ProdChain(object):
         self.__prodPrefix = '{0}{1}-{2}-{3}'.format(param['prodName'], param.get(
             'prodNameSuffix', ''), param['softwareVersion'], param['workDir'])
 
+        self.__tagRE = re.compile(param['tagParser'], re.IGNORECASE)
+
         self.__ownerAndGroup()
 
         outputSubDir = self.__param['outputSubDir'].strip('/')
@@ -487,24 +512,14 @@ class ProdChain(object):
         _setMetaData(outputPath, meta)
 
     def __getTagParam(self, tag):
-        tagParam = {}
-        tagParam['tag'] = tag
-        frag = tag.split('_')
-        tagParam['particle'] = frag[0]
-        if len(frag) > 1:
-            unit = frag[1][-3:].lower()
-            try:
-                num = float(frag[1][:-3])
-            except ValueError:
-                num = 0
-            if unit == 'tev':
-                num *= 1000 * 1000
-            elif unit == 'gev':
-                num *= 1000
-            tagParam['momentum'] = str(num)
-        else:
-            tagParam['momentum'] = '0'
-        return tagParam
+        if not self.__param['tagParser']:
+            return [], {}
+
+        m = self.__tagRE.match(tag)
+        if not m:
+            return [], {}
+
+        return m.groups(), m.groupdict()
 
     def createStep(self, application, tag, tagParam, transType, prevApp=None):
         transID = self.__getTransID(tag, application)
@@ -524,7 +539,10 @@ class ProdChain(object):
                 application, inputMeta['transID'], prevApp))
 
         step_mode = self.__param.get(
-            application + '-mode', '').format(**tagParam)
+            application + '-mode', '').format(*tagParam[0], **tagParam[1])
+        if step_mode:
+            gLogger.notice('{0}-mode: {1}'.format(application, step_mode))
+
         extraArgs = '{0} {1} "{2}"'.format(
             self.__param['evtmax'], self.__param['seed'], step_mode)
         stepArg = dict(
