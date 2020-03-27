@@ -535,7 +535,8 @@ class ProdChain(object):
         if not self.__param['tagParamConverter']:
             return
         try:
-            exec(self.__param['tagParamConverter'], {}, {'paramList': tagParam[0], 'paramDict': tagParam[1]})
+            exec(self.__param['tagParamConverter'], {},
+                 {'paramList': tagParam[0], 'paramDict': tagParam[1]})
         except Exception as e:
             gLogger.error('Convert tag param error: {0}'.format(e))
             raise
