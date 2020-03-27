@@ -70,9 +70,16 @@ transGroup = JUNO_prod_test
 
 ; Regular expression for parsing the tag. https://docs.python.org/3/howto/regex.html
 ; Use group numbers "{0}", "{1}" in "detsim-mode"
-;tagParser = (.*)_(.*)MeV
+tagParser = (.*)_(.*)MeV
 ; Or use named groups "{particle}", "{momentum}" in "detsim-mode"
+; Group numbers "{0}", "{1}" are also available
 ;tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
+
+; Python code string for converting tag parameters
+; Any modification to "paramList" and "paramDict" will be saved
+; Multi line code is also acceptable. Use indentation for the next lines
+;tagParamConverter = paramDict['particle'] = 'e+'
+;    paramDict['momentum'] = float(paramDict['momentum']) * 1000
 
 ; If outputType is "production", the root directory will be /juno/production
 ; If outputType is "user" or something else, the root directory will be under your user directory /juno/user/x/xxx
@@ -120,19 +127,20 @@ tags = e+_0.0MeV e+_1.398MeV e+_4.460MeV
 ; The final directory will be /<outputType dir>/<outputSubDir>/<softwareVersion>/<workDir>
 workDir = Positron01
 
+; If position is not specified, it could be set to "others"
 position = center
+
 workflow = detsim elecsim calib rec
 ;moveType = detsim elecsim calib rec
 moveType = detsim
-detsim-mode = gun --particles {particle} --momentums {momentum} --positions 0 0 0
+detsim-mode = gun --particles {0} --momentums {1} --positions 0 0 0
 
 
-; The parameters in this section will overwrite what's in [all]
 [ChainNew]
 seed = 42
 evtmax = 5
 njobs = 2
-tags = e+_0.0MeV e+_1.398MeV e+_4.460MeV
+tags = e+_0.0MeV e+_1.398MeV
 
 workDir = PositronNew01
 
@@ -195,16 +203,18 @@ class Param(object):
                 return True
             return False
 
-        for key in ['softwareVersion', 'process', 'position']:
+        for key in ['softwareVersion', 'process']:
             if key not in self.__param or not self.__param[key]:
                 raise Exception('Param "{0}" must be specified'.format(key))
 
+        self.__param.setdefault('position', 'others')
         self.__param.setdefault('prodName', 'JUNOProd')
         self.__param.setdefault('transGroup', 'JUNO-Prod')
         self.__param.setdefault('outputType', 'user')
         self.__param.setdefault('outputSE', 'IHEP-STORM')
         self.__param.setdefault('outputMode', 'closest')
         self.__param.setdefault('tagParser', '')
+        self.__param.setdefault('tagParamConverter', '')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
         self.__param.setdefault('moveFlavor', 'Replication')
@@ -511,7 +521,7 @@ class ProdChain(object):
         outputPath = os.path.join(outputPath, application)
         _setMetaData(outputPath, meta)
 
-    def __getTagParam(self, tag):
+    def __parseTagParam(self, tag):
         if not self.__param['tagParser']:
             return [], {}
 
@@ -520,6 +530,15 @@ class ProdChain(object):
             return [], {}
 
         return m.groups(), m.groupdict()
+
+    def __convertTagParam(self, tagParam):
+        if not self.__param['tagParamConverter']:
+            return
+        try:
+            exec(self.__param['tagParamConverter'], {}, {'paramList': tagParam[0], 'paramDict': tagParam[1]})
+        except Exception as e:
+            gLogger.error('Convert tag param error: {0}'.format(e))
+            raise
 
     def createStep(self, application, tag, tagParam, transType, prevApp=None):
         transID = self.__getTransID(tag, application)
@@ -616,7 +635,8 @@ class ProdChain(object):
     def createAllTransformations(self):
         for tag in self.__param['tags']:
             if not self.__param['ignoreWorkflow']:
-                tagParam = self.__getTagParam(tag)
+                tagParam = self.__parseTagParam(tag)
+                self.__convertTagParam(tagParam)
                 gLogger.notice(
                     '\nTag "{0}" with param: {1}'.format(tag, tagParam))
 
