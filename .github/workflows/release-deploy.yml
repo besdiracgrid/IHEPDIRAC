@@ -38,7 +38,7 @@ jobs:
           ./dirac-install -V IHEP -r ${GIT_TAG} --dirac-os
           . ./bashrc
           dirac-configure defaults-IHEP.cfg || true
-      - name: Set temp data dir
+      - name: Set intermediate data dir
         run: echo ::set-env name=MID_DIR::$(ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" 'mktemp --suffix=-deploy -d')
       - name: Deploy to CVMFS
         run: |
