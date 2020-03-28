@@ -28,7 +28,7 @@ jobs:
           dirac-distribution -l IHEP -r ${GIT_TAG} -D release
           ls -Al release
           cd release
-          tar -cf - * | ssh -i ../key/id_rsa -o StrictHostKeyChecking=no www@dirac-code.ihep.ac.cn 'cd /home/www/temp/var/www/html/ihep/tars && tar -xvf - && ls *.tar.gz > tars.list'
+          tar -cf - * | ssh -i ../key/id_rsa -o StrictHostKeyChecking=no www@dirac-code.ihep.ac.cn 'cd /var/www/html/ihep/tars && tar -xvf - && ls *.tar.gz > tars.list'
       - name: Install IHEPDIRAC client
         run: |
           mkdir -p /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG}
