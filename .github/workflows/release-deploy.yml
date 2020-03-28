@@ -1,0 +1,51 @@
+name: Release and Deploy IHEPDIRAC
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  ihepdirac:
+    name: Release and Deploy IHEPDIRAC
+    runs-on: self-hosted
+    container:
+      image: ihepdirac/sl6-ihepdirac-base
+    steps:
+      - name: Setup ssh key
+        run: |
+          rm -rf key
+          mkdir -p key
+          echo "${{ secrets.IHEPDIRAC_KEY }}" > key/id_rsa
+          chmod 400 key/id_rsa
+      - name: Set tag env
+        run: echo ::set-env name=GIT_TAG::${GITHUB_REF##*/}
+      - name: Release IHEPDIRAC
+        run: |
+          echo "Current tag: ${GIT_TAG}"
+          . /opt/dirac-client/DIRAC/v6r22/bashrc
+          rm -rf release
+          dirac-distribution -l IHEP -r ${GIT_TAG} -D release
+          ls -Al release
+          cd release
+          tar -cf - * | ssh -i ../key/id_rsa -o StrictHostKeyChecking=no www@dirac-code.ihep.ac.cn 'cd /home/www/temp/var/www/html/ihep/tars && tar -xvf - && ls *.tar.gz > tars.list'
+      - name: Install IHEPDIRAC client
+        run: |
+          mkdir -p /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG}
+          cd /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG}
+          curl -fsSLk -o dirac-install https://github.com/DIRACGrid/DIRAC/raw/integration/Core/scripts/dirac-install.py
+          chmod +x dirac-install
+          ./dirac-install -V IHEP -r ${GIT_TAG} --dirac-os
+          . ./bashrc
+          dirac-configure defaults-IHEP.cfg || true
+      - name: Set temp data dir
+        run: echo ::set-env name=MID_DIR::$(ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" 'mktemp --suffix=-deploy -d')
+      - name: Deploy to CVMFS
+        run: |
+          echo "Data dir: ${MID_DIR}"
+          tar -czf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat > ${MID_DIR}/${GIT_TAG}.tar.gz"
+          echo "${{ secrets.CVMFS_PASS }}" | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat > ${MID_DIR}/cvmfs-pass && chmod 400 ${MID_DIR}/cvmfs-pass"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat ${MID_DIR}/${GIT_TAG}.tar.gz | /cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'mkdir -p ihepdirac-deploy && cat > ihepdirac-deploy/${GIT_TAG}.tar.gz'"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'cvmfs_server transaction dcomputing.ihep.ac.cn && tar -C / -xzf ihepdirac-deploy/${GIT_TAG}.tar.gz && cvmfs_server publish dcomputing.ihep.ac.cn'"
+      - name: Clean intermediate files
+        run: rm -rf "${MID_DIR}"
