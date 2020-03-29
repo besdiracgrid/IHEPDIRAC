@@ -1,11 +1,17 @@
 # Release and Deploy
 
+Use [GitHub Actions](https://github.com/features/actions)
+to release and deploy IHEPDIRAC client.
 
-## Self hosted runner
 
-Create a CentOS 7 virtual machine as
-[self-hosted runner](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners)
-for [GitHub Actions](https://github.com/features/actions).
+## Self-hosted runner
+
+We use
+[self-hosted](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners)
+runner because we need to access the release
+and deployment server, which is not easy to do on GitHub-hosted runners.
+
+Create a CentOS 7 virtual machine for self-hosted runner.
 
 
 ### Add user for runner
