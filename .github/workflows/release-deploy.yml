@@ -41,14 +41,8 @@ jobs:
           ./dirac-install -V IHEP -r ${GIT_TAG} --dirac-os
           . ./bashrc
           dirac-configure defaults-IHEP.cfg
-      - name: Set intermediate directory
-        run: echo ::set-env name=MID_DIR::$(ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" 'mktemp --suffix=-deploy -d')
       - name: Deploy to CVMFS
         run: |
-          echo "${{ secrets.CVMFS_PASS }}" | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat > ${MID_DIR}/cvmfs-pass && chmod 400 ${MID_DIR}/cvmfs-pass"
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'cvmfs_server transaction dcomputing.ihep.ac.cn || true'"
-          tar -czf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'tar -C / -xzf -'"
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'cvmfs_server publish dcomputing.ihep.ac.cn'"
-      - name: Clean intermediate directory
-        if: always()
-        run: ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "rm -rf '${MID_DIR}'"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server transaction dcomputing.ihep.ac.cn || true'"
+          tar -cf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'tar -C / -xf -'"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server publish dcomputing.ihep.ac.cn'"
