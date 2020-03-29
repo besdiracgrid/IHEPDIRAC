@@ -28,6 +28,10 @@ jobs:
           ls -Al release
           cd release
           tar -cf - * | ssh -i ../key/id_rsa -o StrictHostKeyChecking=no www@dirac-code.ihep.ac.cn 'cd /var/www/html/ihep/tars && tar -xvf - && ls *.tar.gz > tars.list'
+      - name: Set temp proxy
+        run: |
+          echo "${{ secrets.TEMP_PROXY }}" > temp_proxy
+          echo ::set-env name=X509_USER_PROXY::$(pwd)/temp_proxy
       - name: Install IHEPDIRAC client
         run: |
           mkdir -p /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG}
@@ -36,7 +40,7 @@ jobs:
           chmod +x dirac-install
           ./dirac-install -V IHEP -r ${GIT_TAG} --dirac-os
           . ./bashrc
-          dirac-configure defaults-IHEP.cfg || true
+          dirac-configure defaults-IHEP.cfg
       - name: Set intermediate directory
         run: echo ::set-env name=MID_DIR::$(ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" 'mktemp --suffix=-deploy -d')
       - name: Deploy to CVMFS
