@@ -45,11 +45,10 @@ jobs:
         run: echo ::set-env name=MID_DIR::$(ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" 'mktemp --suffix=-deploy -d')
       - name: Deploy to CVMFS
         run: |
-          tar -czf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat > ${MID_DIR}/${GIT_TAG}.tar.gz"
           echo "${{ secrets.CVMFS_PASS }}" | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat > ${MID_DIR}/cvmfs-pass && chmod 400 ${MID_DIR}/cvmfs-pass"
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "cat ${MID_DIR}/${GIT_TAG}.tar.gz | /cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'mkdir -p ihepdirac-deploy && cat > ihepdirac-deploy/${GIT_TAG}.tar.gz'"
           ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'cvmfs_server transaction dcomputing.ihep.ac.cn || true'"
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'tar -C / -xzf ihepdirac-deploy/${GIT_TAG}.tar.gz && script/getca/single_client.sh /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG}/bashrc'"
+          tar -czf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'tar -C / -xzf -'"
           ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "/cvmfs/dcomputing.ihep.ac.cn/hpc/sw/x86_64-sl6/sshpass/1.06/bin/sshpass -f ${MID_DIR}/cvmfs-pass ssh dcomputingpub@cvmfs-stratum-zero.ihep.ac.cn 'cvmfs_server publish dcomputing.ihep.ac.cn'"
       - name: Clean intermediate directory
-        run: rm -rf "${MID_DIR}"
+        if: always()
+        run: ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "rm -rf '${MID_DIR}'"
