@@ -141,6 +141,7 @@ seed = 42
 evtmax = 5
 njobs = 2
 tags = e+_0.0MeV e+_1.398MeV
+tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
 
 workDir = PositronNew01
 
