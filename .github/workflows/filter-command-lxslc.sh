@@ -26,7 +26,11 @@ remote_command=${cmds[1]}
 
 # Only allow specified commands
 case $remote_command in
-  'cvmfs_server transaction dcomputing.ihep.ac.cn || true' | 'tar -C / -xf -' | 'cvmfs_server publish dcomputing.ihep.ac.cn')
+  'cvmfs_server transaction dcomputing.ihep.ac.cn || true')
+    ;;
+  'tar -C / -xf -')
+    ;;
+  'cvmfs_server publish dcomputing.ihep.ac.cn')
     ;;
   *)
     echo "Remote command not allowed: $remote_command"

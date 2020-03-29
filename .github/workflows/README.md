@@ -91,7 +91,7 @@ command="~/.ssh/filter-command-dirac-code.sh",from="IP_ADDRESS",no-port-forwardi
 Copy `filter-command-dirac-code.sh` file. Change the `IP_ADDRESS` to the
 host IP of the virtual machine.
 
-The command will only allow limited commands to run.
+The `command` will only allow limited commands to run.
 
 
 ## lxslc6 server
