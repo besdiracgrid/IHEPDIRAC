@@ -43,6 +43,6 @@ jobs:
           dirac-configure defaults-IHEP.cfg
       - name: Deploy to CVMFS
         run: |
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server transaction dcomputing.ihep.ac.cn || true'"
-          tar -cf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'tar -C / -xf -'"
-          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} ${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server publish dcomputing.ihep.ac.cn'"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} PASS_ENC=${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server transaction dcomputing.ihep.ac.cn || true'"
+          tar -cf - /cvmfs/dcomputing.ihep.ac.cn/dirac/IHEPDIRAC/${GIT_TAG} | ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} PASS_ENC=${{ secrets.CVMFS_PASS_ENC }} 'tar -C / -xf -'"
+          ssh -i key/id_rsa -o StrictHostKeyChecking=no "${{ secrets.MID_HOST }}" "TOKEN=${{ secrets.MID_HOST_TOKEN }} PASS_ENC=${{ secrets.CVMFS_PASS_ENC }} 'cvmfs_server publish dcomputing.ihep.ac.cn'"
