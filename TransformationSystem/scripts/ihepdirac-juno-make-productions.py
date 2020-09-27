@@ -223,10 +223,13 @@ class Param(object):
 
         self.__param['numberOfTasks'] = int(self.__param.get('njobs', '1'))
         self.__param['evtmax'] = int(self.__param.get('evtmax', '1'))
+        self.__param['max2dir'] = int(self.__param.get('max2dir', '10000'))
+        self.__param['userOutput'] = int(self.__param.get('userOutput', '1'))
         self.__param['moveGroupSize'] = int(
             self.__param.get('moveGroupSize', '1'))
 
         self.__param['site'] = parseList(self.__param.get('site', ''))
+        self.__param['bannedsite'] = parseList(self.__param.get('bannedsite', ''))
         self.__param['workflow'] = parseList(self.__param.get('workflow', ''))
         self.__param['moveType'] = parseList(self.__param.get('moveType', ''))
         self.__param['moveSourceSE'] = parseList(
@@ -335,7 +338,7 @@ class ProdStep(object):
                  application, stepName='unknown', description='Production step',
                  inputMeta={}, extraArgs='', inputData=None,
                  outputPath='/juno/test/prod', outputSE='IHEP-STORM', outputPattern='*.root',
-                 isGen=False, site=None, outputMode='closest', maxNumberOfTasks=1):
+                 isGen=False, site=None, bannedsite=None, outputMode='closest', maxNumberOfTasks=1):
         self.__executable = executable
         self.__transType = transType
         self.__transGroup = transGroup
@@ -351,6 +354,7 @@ class ProdStep(object):
         self.__outputPattern = outputPattern
         self.__isGen = isGen
         self.__site = site
+        self.__bannedsite = bannedsite
         self.__outputMode = outputMode
         self.__maxNumberOfTasks = maxNumberOfTasks
 
@@ -378,6 +382,11 @@ class ProdStep(object):
 
         if self.__site:
             job.setDestination(self.__site)
+
+        if self.__bannedsite:
+            job.setBannedSites(self.__bannedsite)
+
+        job.setOutputSandbox(['app.out','app.err','Script3_CodeOutput.log'])
 
         self.__job = job
 
@@ -564,8 +573,8 @@ class ProdChain(object):
         if step_mode:
             gLogger.notice('{0}-mode: {1}'.format(application, step_mode))
 
-        extraArgs = '{0} {1} "{2}"'.format(
-            self.__param['evtmax'], self.__param['seed'], step_mode)
+        extraArgs = '{0} {1} "{2}" {3} {4}'.format(
+            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'], self.__param['userOutput'])
         stepArg = dict(
             executable='bootstrap.sh',
             transType=transType,
@@ -579,9 +588,10 @@ class ProdChain(object):
             inputMeta=inputMeta,
             outputPath=self.__getOutputPath(tag, application),
             outputSE=self.__param['outputSE'],
-            outputPattern='{0}-*.root'.format(application),
+            outputPattern='{0}*-*.root'.format(application),
             isGen=prevApp is None,
             site=self.__param.get('site'),
+            bannedsite=self.__param.get('bannedsite'),
             outputMode=self.__param['outputMode'],
             maxNumberOfTasks=self.__param['numberOfTasks'],
         )
