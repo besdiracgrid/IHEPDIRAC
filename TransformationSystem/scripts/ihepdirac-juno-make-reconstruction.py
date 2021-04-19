@@ -6,22 +6,23 @@ import os
 import sys
 import re
 import ConfigParser
+import json
 
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('''Create JUNO production
+Script.setUsageMessage('''Create JUNO reconstruction
 
 {0} [option|cfgfile] [process]
 
-Example: {0} --example > prod.ini
-Example: {0} --ini myprod.ini
+Example: {0} --example > rec.ini
+Example: {0} --ini myrec.ini
 Example: {0} ChainIBD
-Example: {0} --ini myprod.ini --dryrun'''.format(Script.scriptName))
-Script.registerSwitch('i:', 'ini=', 'Ini file, default to "prod.ini"')
+Example: {0} --ini myrec.ini --dryrun'''.format(Script.scriptName))
+Script.registerSwitch('i:', 'ini=', 'Ini file, default to "rec.ini"')
 Script.registerSwitch(
     'r', 'dryrun', 'Only parse the configuration, do not submit transformation')
-Script.registerSwitch('e', 'example', 'Display prod.ini example')
+Script.registerSwitch('e', 'example', 'Display rec.ini example')
 Script.parseCommandLine(ignoreErrors=False)
 
 
@@ -34,6 +35,7 @@ from DIRAC.TransformationSystem.Client.TransformationClient import Transformatio
 
 from DIRAC.Interfaces.API.Job import Job
 from DIRAC.Interfaces.API.Dirac import Dirac
+
 from DIRAC.Core.Workflow.Parameter import Parameter
 
 DEBUG = True
@@ -57,34 +59,17 @@ process = Chain
 ; JUNO software version
 softwareVersion = J17v1r1
 
-prodName = JUNOProdTest
+prodName = JUNORecTest
 
 ; The prodNameSuffix will be added to the prodName in order to solve the transformation name confliction
 ;prodNameSuffix = _new
 
 ; The transformation group name
-transGroup = JUNO_prod_test
+transGroup = JUNO_rec_test
 
-; If you just want to test a single tag, not all of them
-; With this line enabled, the "tags" parameter will be ignored
-;tag = e+_0.0MeV
-
-; Regular expression for parsing the tag. https://docs.python.org/3/howto/regex.html
-; Use group numbers "{0}", "{1}" in "detsim-mode"
-tagParser = (.*)_(.*)MeV
-; Or use named groups "{particle}", "{momentum}" in "detsim-mode"
-; Group numbers "{0}", "{1}" are also available
-;tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
-
-; Python code string for converting tag parameters
-; Any modification to "paramList" and "paramDict" will be saved
-; Multi line code is also acceptable. Use indentation for the next lines
-;tagParamConverter = paramDict['particle'] = 'e+'
-;    paramDict['momentum'] = float(paramDict['momentum']) * 1000
-
-; If outputType is "production", the root directory will be /juno/production
+; If outputType is "reconstruction", the root directory will be /juno/reconstruction
 ; If outputType is "user" or something else, the root directory will be under your user directory /juno/user/x/xxx
-;outputType = production
+;outputType = reconstruction 
 
 ; The sub directory relative to the root directory
 outputSubDir = zhangxm/test001
@@ -112,47 +97,20 @@ moveTargetSE = IHEP-STORM
 movePlugin = Broadcast
 ;movePlugin = Standard
 
-; If ignoreWorkflow is true, the job associated with workflow will not be created
-;ignoreWorkflow = true
-
-; If ignoreMove is true, the data movement will not be processed
-;ignoreMove = true
-
-
 ; The parameters in this section will overwrite what's in [all]
 [Chain]
-seed = 42
-evtmax = 2
-njobs = 10
-max2dir = 10000 ; decide how many files to be held in a directory
-tags = e+_0.0MeV e+_1.398MeV e+_4.460MeV
+inputQuery = "transID=252"
 
-; The final directory will be /<outputType dir>/<outputSubDir>/<softwareVersion>/<workDir>
-workDir = Positron01
+; The root directory will be /<outputType dir>/<outputSubDir>/<softwareVersion>/<workDir>
+workDir = Rawdata 
 
-; If position is not specified, it could be set to "others"
-position = center
+; workflow = calib rec
+workflow = calib rec
+moveType = calib rec 
 
-workflow = detsim elecsim calib rec
-;moveType = detsim elecsim calib rec
-moveType = detsim
+;cal-mode = 
+;rec-mode = 
 
-userOutput = 0  ; decide if user root file need to be generated, the default is 1
-detsim-mode = gun --particles {0} --momentums {1} --positions 0 0 0 ; add gentools mode
-
-[ChainNew]
-seed = 42
-evtmax = 5
-njobs = 2
-tags = e+_0.0MeV e+_1.398MeV
-tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
-
-workDir = PositronNew01
-
-position = center
-workflow = detsim elecsim
-moveType = detsim elecsim
-detsim-mode = gun --particles {particle} --momentums {momentum} --positions 0 0 0
 '''
 
 
@@ -212,14 +170,11 @@ class Param(object):
             if key not in self.__param or not self.__param[key]:
                 raise Exception('Param "{0}" must be specified'.format(key))
 
-        self.__param.setdefault('position', 'others')
         self.__param.setdefault('prodName', 'JUNOProd')
         self.__param.setdefault('transGroup', 'JUNO-Prod')
         self.__param.setdefault('outputType', 'user')
         self.__param.setdefault('outputSE', 'IHEP-STORM')
         self.__param.setdefault('outputMode', 'closest')
-        self.__param.setdefault('tagParser', '')
-        self.__param.setdefault('tagParamConverter', '')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
         self.__param.setdefault('moveFlavor', 'Replication')
@@ -228,7 +183,6 @@ class Param(object):
         self.__param['numberOfTasks'] = int(self.__param.get('njobs', '1'))
         self.__param['evtmax'] = int(self.__param.get('evtmax', '1'))
         self.__param['max2dir'] = int(self.__param.get('max2dir', '10000'))
-        self.__param['userOutput'] = int(self.__param.get('userOutput', '1'))
         self.__param['moveGroupSize'] = int(
             self.__param.get('moveGroupSize', '1'))
 
@@ -242,15 +196,10 @@ class Param(object):
             self.__param.get('moveTargetSE', 'IHEP-STORM'))
 
         self.__param['dryrun'] = parseBool(self.__param.get('dryrun', 'false'))
-        self.__param['ignoreWorkflow'] = parseBool(
-            self.__param.get('ignoreWorkflow', 'false'))
-        self.__param['ignoreMove'] = parseBool(
-            self.__param.get('ignoreMove', 'false'))
-
-        if 'tag' in self.__param:
-            self.__param['tags'] = [self.__param['tag']]
-        else:
-            self.__param['tags'] = parseList(self.__param.get('tags', ''))
+        
+        self.__param['inputQuery'] = self.__param.get('inputQuery', '')
+    # TODO: change inputQuery into inputMeta, a dictionary type
+    
 
     @property
     def param(self):
@@ -339,10 +288,10 @@ class ProdMove(object):
 
 class ProdStep(object):
     def __init__(self, executable, transType, transGroup, softwareVersion,
-                 application, stepName='unknown', description='Production step',
+                 application, stepName='unknown', description='Reconstruction step',
                  inputMeta={}, extraArgs='', inputData=None,
                  outputPath='/juno/test/prod', outputSE='IHEP-STORM', outputPattern='*.root',
-                 isGen=False, site=None, bannedsite=None, outputMode='closest', maxNumberOfTasks=1):
+                 site=None, bannedsite=None, outputMode='closest', maxNumberOfTasks=1):
         self.__executable = executable
         self.__transType = transType
         self.__transGroup = transGroup
@@ -356,7 +305,6 @@ class ProdStep(object):
         self.__outputPath = outputPath
         self.__outputSE = outputSE
         self.__outputPattern = outputPattern
-        self.__isGen = isGen
         self.__site = site
         self.__bannedsite = bannedsite
         self.__outputMode = outputMode
@@ -413,10 +361,7 @@ class ProdStep(object):
         t.setType(self.__transType)
         t.setDescription(self.__description)
         t.setLongDescription(self.__description)
-        if self.__isGen:
-            t.setMaxNumberOfTasks(self.__maxNumberOfTasks)
-        else:
-            t.setGroupSize(1)
+        t.setGroupSize(1)
         if self.__transGroup:
             t.setTransformationGroup(self.__transGroup)
         # set the job workflow to the transformation
@@ -435,8 +380,9 @@ class ProdStep(object):
 
         currtrans = t.getTransformationID()['Value']
 
-        if self.__inputMeta and not self.__isGen:
+        if self.__inputMeta:
             client = TransformationClient()
+            print "inputMeta:", self.__inputMeta
             res = client.createTransformationInputDataQuery(
                 currtrans, self.__inputMeta)
             if not res['OK']:
@@ -454,12 +400,10 @@ class ProdChain(object):
         self.__prodPrefix = '{0}{1}-{2}-{3}'.format(param['prodName'], param.get(
             'prodNameSuffix', ''), param['softwareVersion'], param['workDir'])
 
-        self.__tagRE = re.compile(param['tagParser'], re.IGNORECASE)
-
         self.__ownerAndGroup()
 
         outputSubDir = self.__param['outputSubDir'].strip('/')
-        if self.__param['outputType'] == 'production':
+        if self.__param['outputType'] == 'reconstruction':
             self.__outputRoot = os.path.join(self.__prodHome, outputSubDir)
         else:
             self.__outputRoot = os.path.join(self.__userHome, outputSubDir)
@@ -481,13 +425,13 @@ class ProdChain(object):
         self.__ownerGroup = res['Value']['group']
         self.__vo = Registry.getVOMSVOForGroup(self.__ownerGroup)
         self.__voHome = '/{0}'.format(self.__vo)
-        self.__prodHome = '/{0}/production'.format(self.__vo)
+        self.__prodHome = '/{0}/reconstruction'.format(self.__vo)
         self.__userHome = '/{0}/user/{1:.1}/{1}'.format(
             self.__vo, self.__owner)
 
     def __prepareDir(self):
         outputPath = self.__outputRoot
-        for d in ['softwareVersion', 'workDir', 'position']:
+        for d in ['softwareVersion', 'workDir']:
             if d == 'workDir':
                 key = 'process'
             else:
@@ -497,115 +441,79 @@ class ProdChain(object):
 
         self.__prodRoot = outputPath
 
-    def __getOutputPath(self, tag, application):
-        return os.path.join(self.__prodRoot, tag, application)
+    def __getOutputPath(self, application):
+        #print "application path", os.path.join(self.__prodRoot, application)
+        return os.path.join(self.__prodRoot, application)
 
-    def __getTransID(self, tag, application):
-        meta = _getMetaData(self.__getOutputPath(tag, application))
+    def __getTransID(self, application):
+        meta = _getMetaData(self.__getOutputPath(application))
         if 'transID' not in meta:
             return ''
         return meta['transID']
 
-    def __getMeta(self, tag, application):
+    def __getMeta(self, application):
         if not application:
             return {}
 
         meta = {}
         meta['softwareVersion'] = self.__param['softwareVersion']
         meta['process'] = self.__param['process']
-        meta['position'] = self.__param['position']
-        meta['tag'] = tag
         meta['application'] = application
 
-        if tag in self.__transIDs and application in self.__transIDs[tag]:
-            meta['transID'] = self.__transIDs[tag][application]
-        else:
-            transID = self.__getTransID(tag, application)
-            if transID:
-                meta['transID'] = transID
+        transID = self.__getTransID(application)
+        if transID:
+            meta['transID'] = transID
 
         return meta
 
-    def __setMeta(self, tag, application):
+    def __setMeta(self, application):
         outputPath = self.__prodRoot
-        outputPath = os.path.join(outputPath, tag)
-        _setMetaData(outputPath, {'tag': tag})
 
         meta = {}
         meta['application'] = application
-        if tag in self.__transIDs and application in self.__transIDs[tag]:
-            meta['transID'] = self.__transIDs[tag][application]
+        if application in self.__transIDs:
+            meta['transID'] = self.__transIDs[application]
         outputPath = os.path.join(outputPath, application)
+        print "set meta data:", outputPath, meta
         _setMetaData(outputPath, meta)
 
-    def __parseTagParam(self, tag):
-        if not self.__param['tagParser']:
-            return [], {}
-
-        m = self.__tagRE.match(tag)
-        if not m:
-            return [], {}
-
-        return m.groups(), m.groupdict()
-
-    def __convertTagParam(self, tagParam):
-        if not self.__param['tagParamConverter']:
-            return
-        try:
-            exec(self.__param['tagParamConverter'], {},
-                 {'paramList': tagParam[0], 'paramDict': tagParam[1]})
-        except Exception as e:
-            gLogger.error('Convert tag param error: {0}'.format(e))
-            raise
-
-    def createStep(self, application, tag, tagParam, transType, prevApp=None):
-        transID = self.__getTransID(tag, application)
-        if transID:
-            gLogger.error('{0}: Transformation already exists for with ID {1} on {2}'.format(
-                application, transID, self.__getOutputPath(tag, application)))
-            return
-
-        inputMeta = {}
+    def createStep(self, application, transType, prevApp=None, inputMeta={}):
         if prevApp:
-            inputMeta = self.__getMeta(tag, prevApp)
-            #add userdata to distinguish detsim.root and detsim_user.root
-            inputMeta['userdata'] = 0
-            inputMeta['userdata_s'] = "0" 
+            inputMeta = self.__getMeta(prevApp)
             if 'transID' not in inputMeta:
                 gLogger.error('{0}: Transformation not found for previous application "{1}"'.format(
                     application, prevApp))
                 return
-            gLogger.notice('{0}: Input transformation "{1}" from "{2}" with meta userdata={3}'.format(
-                application, inputMeta['transID'], prevApp, inputMeta['userdata']))
-        
-        #print "inputMeta", inputMeta
-        step_mode = self.__param.get(
-            application + '-mode', '').format(*tagParam[0], **tagParam[1])
+            gLogger.notice('{0}: Input transformation "{1}" from "{2}"'.format(
+                application, inputMeta['transID'], prevApp))
+
+        step_mode = self.__param.get(application + '-mode', '')
         if step_mode:
             gLogger.notice('{0}-mode: {1}'.format(application, step_mode))
 
-        extraArgs = '{0} {1} "{2}" {3} {4}'.format(
-            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'], self.__param['userOutput'])
+        extraArgs = '{0} {1} "{2}" {3}'.format(
+            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'])
         stepArg = dict(
             executable='bootstrap.sh',
             transType=transType,
             transGroup=self.__param.get('transGroup'),
             softwareVersion=self.__param['softwareVersion'],
             application=application,
-            stepName='{0}-{1}-{2}'.format(self.__prodPrefix, tag, application),
-            description='{0} for {1} with tag {2}'.format(
-                application, self.__param['process'], tag),
+            stepName='{0}-{1}'.format(self.__prodPrefix, application),
+            description='{0} for {1}'.format(
+                application, self.__param['process']),
             extraArgs=extraArgs,
             inputMeta=inputMeta,
-            outputPath=self.__getOutputPath(tag, application),
+            outputPath=self.__getOutputPath(application),
             outputSE=self.__param['outputSE'],
             outputPattern='{0}*-*.root'.format(application),
-            isGen=prevApp is None,
             site=self.__param.get('site'),
             bannedsite=self.__param.get('bannedsite'),
             outputMode=self.__param['outputMode'],
             maxNumberOfTasks=self.__param['numberOfTasks'],
         )
+
+        print "inputMeta:", inputMeta
 
         gLogger.notice('{0}: Create transformation...'.format(application))
 
@@ -616,14 +524,14 @@ class ProdChain(object):
             prodStep.createJob()
             transID = prodStep.createTransformation()
 
-        self.__transIDs.setdefault(tag, {})
-        self.__transIDs[tag][application] = transID
+        #self.__transIDs.setdefault({})
+        self.__transIDs[application] = transID
 
         if not self.__param['dryrun']:
-            self.__setMeta(tag, application)
+            self.__setMeta(application)
 
-    def createMove(self, application, tag, transType):
-        inputMeta = self.__getMeta(tag, application)
+    def createMove(self, application, transType):
+        inputMeta = self.__getMeta(application)
         if 'transID' not in inputMeta:
             gLogger.error(
                 '{0}-move: Transformation not found for application "{0}"'.format(application))
@@ -634,11 +542,11 @@ class ProdChain(object):
         moveArg = dict(
             transType=transType,
             transGroup=self.__param.get('transGroup'),
-            transName='{0}-{1}-{2}-{3}'.format(self.__prodPrefix,
-                                               tag, application, self.__param.get('moveFlavor')),
+            transName='{0}-{1}-{2}'.format(self.__prodPrefix,
+                                               application, self.__param.get('moveFlavor')),
             flavour=self.__param.get('moveFlavor'),
-            description='Move {0} for {1} with tag {2}'.format(
-                application, self.__param['process'], tag),
+            description='Move {0} for {1}'.format(
+                application, self.__param['process']),
             plugin=self.__param['movePlugin'],
             inputMeta=inputMeta,
             sourceSE=self.__param['moveSourceSE'],
@@ -656,44 +564,36 @@ class ProdChain(object):
             transID = prodMove.createTransformation()
 
     def createAllTransformations(self):
-        for tag in self.__param['tags']:
-            if not self.__param['ignoreWorkflow']:
-                tagParam = self.__parseTagParam(tag)
-                self.__convertTagParam(tagParam)
-                gLogger.notice(
-                    '\nTag "{0}" with param: {1}'.format(tag, tagParam))
+  
+        inputMeta = json.loads(self.__param['inputQuery'])
+        gLogger.notice('\nInput metadata: {0}'.format(inputMeta))
 
-                for step in ['detsim', 'elecsim', 'calib', 'rec']:
-                    if step not in self.__param['workflow']:
-                        continue
+        for step in ['elecsim','calib', 'rec', 'rawrec']:
+            if step not in self.__param['workflow']:
+                continue
 
-                    gLogger.notice('')
-                    if step == 'detsim':
-                        self.createStep('detsim', tag, tagParam,
-                                        'MCSimulation-JUNO', None)
-                    if step == 'elecsim':
-                        self.createStep('elecsim', tag, tagParam,
-                                        'ElecSimulation-JUNO', 'detsim')
-                    if step == 'calib':
-                        self.createStep('calib', tag, tagParam,
-                                        'Calibration-JUNO', 'elecsim')
-                    if step == 'rec':
-                        self.createStep('rec', tag, tagParam,
-                                        'DataReconstruction-JUNO', 'calib')
+            if step == 'elecsim':
+                self.createStep('elecsim','ElecSimulation-JUNO',None, inputMeta)
+            if step == 'calib':
+                self.createStep('calib','Calibration-JUNO', 'elecsim')
+            if step == 'rec':
+                self.createStep('rec','DataReconstruction-JUNO', 'calib')
+            if step == 'rawrec':
+                self.createStep('calib', 'Calibration-JUNO', None, inputMeta)
+                self.createStep('rec', 'DataReconstruction-JUNO', 'calib')
 
-            if not self.__param['ignoreMove']:
-                for step in ['detsim', 'elecsim', 'calib', 'rec']:
-                    if step not in self.__param['moveType']:
-                        continue
-                    gLogger.notice('')
-                    self.createMove(step, tag, 'Replication-JUNO')
+        for step in ['elecsim','calib','rec', 'rawrec']:
+            if step not in self.__param['moveType']:
+                continue
+            gLogger.notice('createMove-step:{0}'.format(step))
+            self.createMove(step, 'Replication-JUNO')
 
 
 def main():
     args = Script.getPositionalArgs()
     switches = Script.getUnprocessedSwitches()
 
-    configFile = 'prod.ini'
+    configFile = 'rec.ini'
     paramCmd = {}
     displayExample = False
 
