@@ -38,8 +38,9 @@ class AccessTest( TestBase ):
     if not params[ 'OK' ]:
       return params
     host, port = params[ 'Value' ]
-
+    
     command = 'nc -v -w %d -z %s %s' % ( self.timeout, host, port )
+    print "Access tests command:", command
     submissionTime = datetime.utcnow().replace( microsecond = 0 )
     subp = subprocess.Popen( command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
     stdout, stderr = subp.communicate()

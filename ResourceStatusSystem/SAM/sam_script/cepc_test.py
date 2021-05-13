@@ -5,7 +5,7 @@ import socket, subprocess, time
 hostname = socket.gethostname()
 
 commands = """
-wget http://cvmfs.ihep.ac.cn/pub/cepc/cepc_test_job.tgz
+wget http://dirac-code.ihep.ac.cn/cepc/test/cepc_test_job.tgz  
 tar xvfz cepc_test_job.tgz
 cd cepc_test_job
 echo

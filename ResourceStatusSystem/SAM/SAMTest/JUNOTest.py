@@ -21,7 +21,8 @@ class JUNOTest( CEBaseTest ):
 
   @staticmethod
   def _judge( log ):
-    idx = log.find( '***  SNiPER Terminated Successfully!  ***' )
+    idx = log.find( 'SNiPER::Context Terminated Successfully' )
+    print "++++++++++++++++++++++++correct or not:", idx
     if idx != -1:
       return 'OK'
     else:
