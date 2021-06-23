@@ -21,6 +21,10 @@ class SEAccessTest:
     _basePath = 'Resources/StorageElements'
 
     host = gConfig.getValue( '%s/%s/AccessProtocol.1/Host' % ( _basePath, element ), '' )
+    if not host:
+      host = gConfig.getValue( '%s/%s/GFAL2_XROOT/Host' % ( _basePath, element ), '' )
     port = gConfig.getValue( '%s/%s/AccessProtocol.1/Port' % ( _basePath, element ), '' )
+    if not port:
+      port = gConfig.getValue( '%s/%s/GFAL2_XROOT/Port' % ( _basePath, element ), '' )
 
     return S_OK( ( host, port ) )

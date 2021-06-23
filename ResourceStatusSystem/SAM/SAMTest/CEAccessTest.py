@@ -42,6 +42,8 @@ class CEAccessTest:
             return S_OK((host, 22))
           elif cetype == 'CREAM':
             return S_OK((element, 8443))
+          elif cetype == 'HTCondorCE':
+            return S_OK((element, 9619))
           elif cetype == 'ARC':
             return S_OK((element, 2135))
           else:

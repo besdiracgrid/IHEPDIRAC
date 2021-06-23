@@ -5,7 +5,11 @@ import socket, subprocess, time
 hostname = socket.gethostname()
 
 commands = """
-ls /cvmfs/boss.cern.ch/
+cvmfsdir="/cvmfs/boss.cern.ch"
+if [ ! -d "/cvmfs/boss.cern.ch" ]; then
+   cvmfsdir="/cvmfs/bes.ihep.ac.cn"
+fi
+ls $cvmfsdir 
 """
 
 start = time.time()
