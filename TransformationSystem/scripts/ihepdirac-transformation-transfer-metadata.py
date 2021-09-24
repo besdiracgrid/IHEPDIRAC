@@ -103,7 +103,7 @@ t.setStatus("Active")
 t.setAgentType("Automatic")
 transID = t.getTransformationID()
 
-result = tc.createTransformationInputDataQuery(transID['Value'], query)
+result = tc.createTransformationMetaQuery(transID['Value'], query, 'Input')
 if not result['OK']:
     gLogger.error('Can not create query to transformation: %s' % result['Message'])
     exit(2)

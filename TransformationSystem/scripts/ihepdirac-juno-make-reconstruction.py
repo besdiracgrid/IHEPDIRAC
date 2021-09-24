@@ -277,8 +277,8 @@ class ProdMove(object):
 
         if self.__inputMeta:
             client = TransformationClient()
-            res = client.createTransformationInputDataQuery(
-                currtrans, self.__inputMeta)
+            res = client.createTransformationMetaQuery(
+                currtrans, self.__inputMeta, 'Input')
             if not res['OK']:
                 raise Exception(
                     'Create transformation query error: {0}'.format(res['Message']))

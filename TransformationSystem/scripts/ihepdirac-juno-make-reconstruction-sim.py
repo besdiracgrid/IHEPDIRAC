@@ -11,7 +11,7 @@ import json
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('''Create JUNO reconstruction from detsim
+Script.setUsageMessage('''Produce JUNO reconstruction from detsim
 
 {0} [option|cfgfile] [process]
 
@@ -110,11 +110,6 @@ workflow = elecsim_rec
 moveType = elecsim_rec
 
 elecsim_rec-mode = --disablePmtTTS
-
-; workflow = calib rec
-workflow = calib rec
-moveType = calib rec 
-
 ;cal-mode = 
 ;rec-mode = 
 
@@ -184,12 +179,14 @@ class Param(object):
         self.__param.setdefault('outputMode', 'closest')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
+        self.__param.setdefault('position', 'others')
         self.__param.setdefault('moveFlavor', 'Replication')
         self.__param.setdefault('movePlugin', 'Broadcast')
 
         self.__param['numberOfTasks'] = int(self.__param.get('njobs', '1'))
         self.__param['evtmax'] = int(self.__param.get('evtmax', '1'))
         self.__param['max2dir'] = int(self.__param.get('max2dir', '10000'))
+        self.__param['userOutput'] = int(self.__param.get('userOutput', '1'))
         self.__param['moveGroupSize'] = int(
             self.__param.get('moveGroupSize', '1'))
 
@@ -287,8 +284,8 @@ class ProdMove(object):
 
         if self.__inputMeta:
             client = TransformationClient()
-            res = client.createTransformationInputDataQuery(
-                currtrans, self.__inputMeta)
+            res = client.createTransformationMetaQuery(
+                currtrans, self.__inputMeta, 'Input')
             if not res['OK']:
                 raise Exception(
                     'Create transformation query error: {0}'.format(res['Message']))
@@ -393,8 +390,8 @@ class ProdStep(object):
         if self.__inputMeta:
             client = TransformationClient()
             print "inputMeta:", self.__inputMeta
-            res = client.createTransformationInputDataQuery(
-                currtrans, self.__inputMeta)
+            res = client.createTransformationMetaQuery(
+                currtrans, self.__inputMeta, 'Input')
             if not res['OK']:
                 raise Exception(
                     'Create transformation query error: {0}'.format(res['Message']))
@@ -445,14 +442,17 @@ class ProdChain(object):
     def __prepareDir(self):
         outputPath = self.__outputRoot
 
-        for d in ['softwareVersion', 'workDir']:
+        for d in ['softwareVersion', 'workDir', 'position']:
             if d == 'workDir':
                 key = 'process'
             else:
                 key = d
             outputPath = os.path.join(outputPath, self.__param[d])
-        #   reuse the detsim step 
-        #   _setMetaData(outputPath, {key: self.__param[key]})
+        #   reuse the detsim step? only in the same directory
+            if os.path.isdir(outputPath):
+                gLogger.notice('The path exists, passing metadata defined')
+            else:
+                _setMetaData(outputPath, {key: self.__param[key]})
 
         self.__prodRoot = outputPath
 
@@ -473,6 +473,7 @@ class ProdChain(object):
         meta = {}
         meta['softwareVersion'] = self.__param['softwareVersion']
         meta['process'] = self.__param['process']
+        meta['position'] = self.__param['position']
         meta['application'] = application
         meta['tag'] = tag
 
@@ -522,8 +523,8 @@ class ProdChain(object):
         if step_mode:
             gLogger.notice('{0}-mode: {1}'.format(application, step_mode))
 
-        extraArgs = '{0} {1} "{2}" {3}'.format(
-            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'])
+        extraArgs = '{0} {1} "{2}" {3} {4}'.format(
+            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'], self.__param['userOutput'])
         stepArg = dict(
             executable='bootstrap.sh',
             transType=transType,

@@ -139,6 +139,7 @@ moveType = detsim
 
 userOutput = 0  ; decide if user root file need to be generated, the default is 1
 detsim-mode = gun --particles {0} --momentums {1} --positions 0 0 0 ; add gentools mode
+extra-script = Atm.exe -data_dir /cvmfs/juno.ihep.ac.cn/centos7_amd64_gcc830/Pre-Release/J21v1r0-Pre0/data/Generator/AtmNC/data/ -seed 1 -n 10 -o Atm_1.txt -noDeex -tran_ene_max 1.3 -tran_ene_min 0.6
 
 [ChainNew]
 seed = 42
@@ -328,8 +329,8 @@ class ProdMove(object):
 
         if self.__inputMeta:
             client = TransformationClient()
-            res = client.createTransformationInputDataQuery(
-                currtrans, self.__inputMeta)
+            res = client.createTransformationMetaQuery(
+                currtrans, self.__inputMeta, 'Input')
             if not res['OK']:
                 raise Exception(
                     'Create transformation query error: {0}'.format(res['Message']))
@@ -382,7 +383,7 @@ class ProdStep(object):
         job.setExecutable(self.__executable, arguments=arguments)
 
         # failover for failed jobs
-        job.setExecutable('/bin/ls -l', modulesList=['Script', 'FailoverRequest'])
+        #job.setExecutable('/bin/ls -l', modulesList=['Script', 'FailoverRequest'])
 
         if self.__inputData:
             job.setInputData(self.__inputData)
@@ -437,8 +438,8 @@ class ProdStep(object):
 
         if self.__inputMeta and not self.__isGen:
             client = TransformationClient()
-            res = client.createTransformationInputDataQuery(
-                currtrans, self.__inputMeta)
+            res = client.createTransformationMetaQuery(
+                currtrans, self.__inputMeta, 'Input')
             if not res['OK']:
                 raise Exception(
                     'Create transformation query error: {0}'.format(res['Message']))
@@ -581,11 +582,15 @@ class ProdChain(object):
         #print "inputMeta", inputMeta
         step_mode = self.__param.get(
             application + '-mode', '').format(*tagParam[0], **tagParam[1])
+        step_preScripts = self.__param.get(
+            application + '-preScripts', '').format(*tagParam[0], **tagParam[1])
         if step_mode:
             gLogger.notice('{0}-mode: {1}'.format(application, step_mode))
+        if step_preScripts:
+            gLogger.notice('{0}-preScripts: {1}'.format(application, step_preScripts))
 
-        extraArgs = '{0} {1} "{2}" {3} {4}'.format(
-            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'], self.__param['userOutput'])
+        extraArgs = '{0} {1} "{2}" {3} {4} "{5}"'.format(
+            self.__param['evtmax'], self.__param['seed'], step_mode, self.__param['max2dir'], self.__param['userOutput'], step_preScripts)
         stepArg = dict(
             executable='bootstrap.sh',
             transType=transType,
@@ -663,7 +668,7 @@ class ProdChain(object):
                 gLogger.notice(
                     '\nTag "{0}" with param: {1}'.format(tag, tagParam))
 
-                for step in ['detsim', 'elecsim', 'calib', 'rec']:
+                for step in ['detsim', 'elecsim_rec', 'elecsim', 'calib', 'rec']:
                     if step not in self.__param['workflow']:
                         continue
 
@@ -671,6 +676,9 @@ class ProdChain(object):
                     if step == 'detsim':
                         self.createStep('detsim', tag, tagParam,
                                         'MCSimulation-JUNO', None)
+                    if step == 'elecsim_rec':
+                        self.createStep('elecsim_rec', tag, tagParam,
+                                        'ElecSimulation-JUNO', 'detsim')
                     if step == 'elecsim':
                         self.createStep('elecsim', tag, tagParam,
                                         'ElecSimulation-JUNO', 'detsim')
@@ -682,7 +690,7 @@ class ProdChain(object):
                                         'DataReconstruction-JUNO', 'calib')
 
             if not self.__param['ignoreMove']:
-                for step in ['detsim', 'elecsim', 'calib', 'rec']:
+                for step in ['detsim', 'elecsim_rec', 'elecsim', 'calib', 'rec']:
                     if step not in self.__param['moveType']:
                         continue
                     gLogger.notice('')
