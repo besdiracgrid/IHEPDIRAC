@@ -11,14 +11,14 @@ import json
 from DIRAC import S_OK, S_ERROR, gLogger, exit
 from DIRAC.Core.Base import Script
 
-Script.setUsageMessage('''Produce JUNO reconstruction from detsim
+Script.setUsageMessage('''Create JUNO reconstruction from existing detsim datas
 
 {0} [option|cfgfile] [process]
 
 Example: {0} --example > rec.ini
-Example: {0} --ini myrec.ini
-Example: {0} ChainIBD
-Example: {0} --ini myrec.ini --dryrun'''.format(Script.scriptName))
+Example: {0} --ini rec.ini
+Example: {0} Chain
+Example: {0} --ini rec.ini --dryrun'''.format(Script.scriptName))
 Script.registerSwitch('i:', 'ini=', 'Ini file, default to "rec.ini"')
 Script.registerSwitch(
     'r', 'dryrun', 'Only parse the configuration, do not submit transformation')
@@ -47,72 +47,76 @@ PROD_EXAMPLE = '''\
 
 ; Common parameters
 [all]
-; Dryrun mode will only test the configuration and do not really submit any jobs
+; Optional: Define dryrun mode, this mode only test the configuration and do not really submit any jobs
 ; This can also be passed in the command argument
-;dryrun = true
+;dryrun = false 
 
-; The process name "Chain" indicates that more parameters are selected from the [Chain] section
-; This can also be passed in the command argument
+; Define user parameter section [Chain], task-specific parameters can be defined the [Chain] section
 process = Chain
 
-; JUNO software version
-softwareVersion = J17v1r1
+; Define JUNO offline software version
+softwareVersion = centos7_amd64_gcc830/Pre-Release/J21v2r0-Pre0 
 
-prodName = JUNORecTest
+; Define production name, the name is used for current production
+prodName = JUNOProdTest
 
-; The prodNameSuffix will be added to the prodName in order to solve the transformation name confliction
+; Optional: The prodNameSuffix will be added to the prodName to be sure that each submission has a unique name
 ;prodNameSuffix = _new
 
-; The transformation group name
-transGroup = JUNO_rec_test
+; Define the transformation group name, which is used for identifying monitoring cells 
+transGroup = JUNO_prod_test
 
-; If outputType is "reconstruction", the root directory will be /juno/reconstruction
+; Optional: If you just want to test a single tag, not all of them
+; With this line enabled, the "tags" parameter will be ignored
+;tag = e+_0.0MeV
+
+; Define root directory in Dirac File Catalogue
+; If outputType is "production", the root directory will be /juno/production
 ; If outputType is "user" or something else, the root directory will be under your user directory /juno/user/x/xxx
-;outputType = reconstruction 
+outputType = user
 
-; The sub directory relative to the root directory
-outputSubDir = zhangxm/test001
+; Define sub directory relative to the root directory
+outputSubDir = positron/prd_2021
 
-;outputSE = IHEP-STORM
-
-; "closest" means upload the job output data to the closest SE
+; Define the output Mode, "closest" means uploading the job output data to the closest SE to the site
 ; If no closest SE is found for this site, then upload to the SE defined by "outputSE"
 outputMode = closest
+;outputSE = IHEP-STORM
 
-; If no site specified, all available sites will be chosen
-;site = GRID.INFN-CNAF.it CLOUD.JINRONE.ru GRID.IN2P3.fr
-;bannedsite = GRID.IHEP.cn
-
-moveFlavor = Replication
-;moveFlavor = Moving
+; If no site specified, all available sites will be chosen unless the sites was put in "bannedsite"
+;site = GRID.INFN-CNAF.it GRID.IHEP.cn GRID.IN2P3.fr GRID.JINR-CONDOR.ru
+;bannedsite =   
 
 ; How many files to move in a single request
 ;moveGroupSize = 10
 
-;moveSourceSE = IHEP-STORM CNAF-STORM JINR-JUNO IN2P3-DCACHE
-;moveSourceSE = CNAF-STORM JINR-JUNO IN2P3-DCACHE
+; Define the destination SE where data arrive
 ;moveTargetSE = IHEP-STORM CNAF-STORM
 moveTargetSE = IHEP-STORM
-movePlugin = Broadcast
-;movePlugin = Standard
+
+; If ignoreWorkflow is true, the workflow will not be created
+;ignoreWorkflow = false 
+
+; If ignoreMove is true, the dataflow will not be processed
+;ignoreMove = false
 
 ; The parameters in this section will overwrite what's in [all]
 [Chain]
-; tags used in detsim step
-tags = e+_0.0momentums 
-inputQuery = {"dirName":"ML-prd03_i","application":"detsim","userdata":"0"}
+; Depends on which existing tag to be used, format need to be consistent with the existing detsim
+tags = gamma_1.0momentums gamma_2.0momentums
 
-; The root directory will be /<outputType dir>/<outputSubDir>/<softwareVersion>/<workDir>/<tag>/<applicaton>
-workDir = positron/uniform
+; Define which existing detsim data to be used, need to define metadata in DFC first
+inputQuery = {"dirName":"/juno/production/ML/prd02_gamma_i","application":"detsim","userdata":"0"}
 
-; workflow = elecsim calib rec elecsim_rec
+workDir = gamma
+
+; position = 
 workflow = elecsim_rec
 moveType = elecsim_rec
+; Define if need user output, the default is 1 
+userOutput = 1
 
-elecsim_rec-mode = --disablePmtTTS
-;cal-mode = 
-;rec-mode = 
-
+elecsim_rec-mode = --no-evtrec
 '''
 
 
@@ -179,7 +183,7 @@ class Param(object):
         self.__param.setdefault('outputMode', 'closest')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
-        self.__param.setdefault('position', 'others')
+        self.__param.setdefault('position', '')
         self.__param.setdefault('moveFlavor', 'Replication')
         self.__param.setdefault('movePlugin', 'Broadcast')
 
@@ -242,30 +246,9 @@ class ProdMove(object):
             t.setTransformationGroup(self.__transGroup)
         t.setPlugin(self.__plugin)
 
-#        t.setSourceSE(self.__sourceSE)
         t.setTargetSE(self.__targetSE)
 
         transBody = []
-
-#        transBody.append(
-#            ("ReplicateAndRegister", {"TargetSE": ','.join(self.__targetSE)}))
-
-#        for tse in self.__targetSE:
-#            sse = list(set(self.__sourceSE) - set([tse]))
-#            transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(sse), "TargetSE": ','.join(tse)}))
-#
-#        if self.__flavour == 'Moving':
-#            for sse in self.__sourceSE:
-#                if sse in self.__targetSE:
-#                    continue
-#                gLogger.debug('Remove from SE: {0}'.format(sse))
-#                transBody.append(("RemoveReplica", {"TargetSE": ','.join(sse)}))
-#
-#        transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(
-#            self.__sourceSE), "TargetSE": ','.join(self.__targetSE)}))
-#        if self.__flavour == 'Moving':
-#            transBody.append(
-#                ("RemoveReplica", {"TargetSE": ','.join(self.__sourceSE)}))
 
         t.setBody(transBody)
 
@@ -424,7 +407,6 @@ class ProdChain(object):
         gLogger.notice('VO: {0}'.format(self.__vo))
         gLogger.notice('OutputRoot: {0}'.format(self.__outputRoot))
         gLogger.notice('ProdRoot: {0}'.format(self.__prodRoot))
-        gLogger.notice('ProdPrefix: {0}'.format(self.__prodPrefix))
 
     def __ownerAndGroup(self):
         res = getProxyInfo(False, False)
@@ -447,11 +429,8 @@ class ProdChain(object):
                 key = 'process'
             else:
                 key = d
-            outputPath = os.path.join(outputPath, self.__param[d])
-        #   reuse the detsim step? only in the same directory
-            if os.path.isdir(outputPath):
-                gLogger.notice('The path exists, passing metadata defined')
-            else:
+            if self.__param[d]:
+                outputPath = os.path.join(outputPath, self.__param[d])
                 _setMetaData(outputPath, {key: self.__param[key]})
 
         self.__prodRoot = outputPath
