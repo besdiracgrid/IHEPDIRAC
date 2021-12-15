@@ -15,9 +15,9 @@ Script.setUsageMessage('''Create JUNO production
 {0} [option|cfgfile] [process]
 
 Example: {0} --example > prod.ini
-Example: {0} --ini myprod.ini
-Example: {0} ChainIBD
-Example: {0} --ini myprod.ini --dryrun'''.format(Script.scriptName))
+Example: {0} --ini myprod.ini --dryrun
+Example: {0} --ini myprod.ini  
+Example: {0} --ini myprod.ini Chain'''.format(Script.scriptName))
 Script.registerSwitch('i:', 'ini=', 'Ini file, default to "prod.ini"')
 Script.registerSwitch(
     'r', 'dryrun', 'Only parse the configuration, do not submit transformation')
@@ -46,116 +46,126 @@ PROD_EXAMPLE = '''\
 
 ; Common parameters
 [all]
-; Dryrun mode will only test the configuration and do not really submit any jobs
+; Optional: Define dryrun mode, this mode only test the configuration and do not really submit any jobs
 ; This can also be passed in the command argument
-;dryrun = true
+;dryrun = false 
 
-; The process name "Chain" indicates that more parameters are selected from the [Chain] section
-; This can also be passed in the command argument
+; Define user parameter section [Chain], task-specific parameters can be defined the [Chain] section
 process = Chain
 
-; JUNO software version
-softwareVersion = J17v1r1
+; Define JUNO offline software version
+softwareVersion = centos7_amd64_gcc830/Pre-Release/J21v2r0-Pre0 
 
+; Define production name, the name is used for current production
 prodName = JUNOProdTest
 
-; The prodNameSuffix will be added to the prodName in order to solve the transformation name confliction
+; Optional: The prodNameSuffix will be added to the prodName to be sure that each submission has a unique name
 ;prodNameSuffix = _new
 
-; The transformation group name
+; Define the transformation group name, which is used for identifying monitoring cells 
 transGroup = JUNO_prod_test
 
-; If you just want to test a single tag, not all of them
+; Optional: If you just want to test a single tag, not all of them
 ; With this line enabled, the "tags" parameter will be ignored
 ;tag = e+_0.0MeV
 
-; Regular expression for parsing the tag. https://docs.python.org/3/howto/regex.html
-; Use group numbers "{0}", "{1}" in "detsim-mode"
-tagParser = (.*)_(.*)MeV
-; Or use named groups "{particle}", "{momentum}" in "detsim-mode"
-; Group numbers "{0}", "{1}" are also available
-;tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
-
-; Python code string for converting tag parameters
-; Any modification to "paramList" and "paramDict" will be saved
-; Multi line code is also acceptable. Use indentation for the next lines
-;tagParamConverter = paramDict['particle'] = 'e+'
-;    paramDict['momentum'] = float(paramDict['momentum']) * 1000
-
+; Define root directory in Dirac File Catalogue
 ; If outputType is "production", the root directory will be /juno/production
 ; If outputType is "user" or something else, the root directory will be under your user directory /juno/user/x/xxx
-;outputType = production
+outputType = user
 
-; The sub directory relative to the root directory
-outputSubDir = zhangxm/test001
+; Define sub directory relative to the root directory
+outputSubDir = positron/prd_2021
 
-;outputSE = IHEP-STORM
-
-; "closest" means upload the job output data to the closest SE
+; Define the output Mode, "closest" means uploading the job output data to the closest SE to the site
 ; If no closest SE is found for this site, then upload to the SE defined by "outputSE"
 outputMode = closest
+;outputSE = IHEP-STORM
 
-; If no site specified, all available sites will be chosen
-;site = GRID.INFN-CNAF.it CLOUD.JINRONE.ru GRID.IN2P3.fr
-;bannedsite = GRID.IHEP.cn
-
-moveFlavor = Replication
-;moveFlavor = Moving
+; If no site specified, all available sites will be chosen unless the sites was put in "bannedsite"
+;site = GRID.INFN-CNAF.it GRID.IHEP.cn GRID.IN2P3.fr GRID.JINR-CONDOR.ru
+;bannedsite =   
 
 ; How many files to move in a single request
 ;moveGroupSize = 10
 
-;moveSourceSE = IHEP-STORM CNAF-STORM JINR-JUNO IN2P3-DCACHE
-;moveSourceSE = CNAF-STORM JINR-JUNO IN2P3-DCACHE
+; Define the destination SE where data arrive
 ;moveTargetSE = IHEP-STORM CNAF-STORM
 moveTargetSE = IHEP-STORM
-movePlugin = Broadcast
-;movePlugin = Standard
 
-; If ignoreWorkflow is true, the job associated with workflow will not be created
-;ignoreWorkflow = true
+; If ignoreWorkflow is true, the workflow will not be created
+;ignoreWorkflow = false 
 
-; If ignoreMove is true, the data movement will not be processed
-;ignoreMove = true
-
+; If ignoreMove is true, the dataflow will not be processed
+;ignoreMove = false
 
 ; The parameters in this section will overwrite what's in [all]
 [Chain]
+; Define the initial seed, "seed" + "jobid" is used for the final seed for each job
 seed = 42
+
+; Define maximum event in a job and the number of job, the total job volume is "evtmax" * "njobs"
 evtmax = 2
 njobs = 10
-max2dir = 10000 ; decide how many files to be held in a directory
+
+; Define the number of files to be held in a directory
+max2dir = 10000
+
+; Define regular expression for parsing the tags. https://docs.python.org/3/howto/regex.html
+; Use group numbers "{0}", "{1}" in "detsim-mode"
+tagParser = (.*)_(.*)MeV
+
+; Used to define multi-tasks in one submission, single task can be set to the particle name eg. muon 
 tags = e+_0.0MeV e+_1.398MeV e+_4.460MeV
 
-; The final directory will be /<outputType dir>/<outputSubDir>/<softwareVersion>/<workDir>
-workDir = Positron01
+; The final directory will be /<outputType>/<outputSubDir>/<softwareVersion>/<workDir>/<position>/<tags>
+; The default is the process name, eg Chain 
+; workDir = Chain 
 
-; If position is not specified, it could be set to "others"
-position = center
+; Define a subdirectory to identify particle positions
+; The default is null
+; position =  
 
-workflow = detsim elecsim calib rec
-;moveType = detsim elecsim calib rec
+; Define steps in the work flow
+; workflow = detsim elecsim calib rec elecsim_rec
+workflow = detsim elecsim_rec
+
+; Define steps in the data flow
+; moveType = detsim elecsim calib rec elecsim_rec
 moveType = detsim
 
-userOutput = 0  ; decide if user root file need to be generated, the default is 1
-detsim-mode = gun --particles {0} --momentums {1} --positions 0 0 0 ; add gentools mode
-extra-script = Atm.exe -data_dir /cvmfs/juno.ihep.ac.cn/centos7_amd64_gcc830/Pre-Release/J21v1r0-Pre0/data/Generator/AtmNC/data/ -seed 1 -n 10 -o Atm_1.txt -noDeex -tran_ene_max 1.3 -tran_ene_min 0.6
+; Define if user root file need to be generated, the default is 1 (needed)
+userOutput = 0 
 
-[ChainNew]
+; Define detsim gentools mode for the detsim step, {0} and {1} are defined by tags
+; the default: 
+; detsim-mode = --no-gdml --evtmax $evtmax --seed $seed --output detsim-${seed}.root --user-output detsim_user-${seed}.root
+detsim-mode = gun --particles {0} --momentums {1} --positions 0 0 0
+
+; Define additional parameters for each step
+; The default:
+; elecsim-mode = --evtmax -1 --seed $num --input $inputfile --output elecsim-$num.root --rate 1.0
+; elecsim_rec-mode = --evtmax -1 --seed $num --input $inputfile --output elecsim_rec-$num.root
+; cal-mode = --evtmax -1 --input $inputfile --output calib-$num.root
+; rec-mode = --evtmax $evtmax --input $inputfile --output rec-$num.root 
+elecsim_rec-mode = --rate 0.001 --enableWP --enableWPDarkPulse --no-evtrec
+
+[Muon_2021]
 seed = 42
 evtmax = 5
 njobs = 2
-tags = e+_0.0MeV e+_1.398MeV
-tagParser = (?P<particle>.*)_(?P<momentum>.*)MeV
+; Just single task, the default is "Single" 
+; tags = Muon 
 
-workDir = PositronNew01
+workflow = detsim
+moveType = detsim
 
-position = center
-workflow = detsim elecsim
-moveType = detsim elecsim
-detsim-mode = gun --particles {particle} --momentums {momentum} --positions 0 0 0
+; Define the script to be run before detsim with <step>-preScripts, [seed] will be replaced with the one generated in each job
+; Note: can't include {}
+detsim-preScripts = $JUNOTOP/offline/InstallArea/$CMTCONFIG/bin/Muon.exe -seed [seed] -o Muon.txt -n $evtmax -v Rock -mult 1 -music_dir  $JUNOTOP/data/Generator/Muon/data
+
+detsim-mode = --pmtsd-v2 --pmtsd-merge-twindow 1.0 --pmt-hit-type 2 --anamgr-config-file load_Muon_config.py --detoption Acrylic hepevt --exe Muon --file Muon.txt 
 '''
-
 
 def _setMetaData(directory, meta):
     fcc = FileCatalogClient()
@@ -213,14 +223,13 @@ class Param(object):
             if key not in self.__param or not self.__param[key]:
                 raise Exception('Param "{0}" must be specified'.format(key))
 
-        self.__param.setdefault('position', 'others')
+        self.__param.setdefault('position', '')
         self.__param.setdefault('prodName', 'JUNOProd')
         self.__param.setdefault('transGroup', 'JUNO-Prod')
         self.__param.setdefault('outputType', 'user')
         self.__param.setdefault('outputSE', 'IHEP-STORM')
         self.__param.setdefault('outputMode', 'closest')
         self.__param.setdefault('tagParser', '')
-        self.__param.setdefault('tagParamConverter', '')
         self.__param.setdefault('seed', '0')
         self.__param.setdefault('workDir', self.__param['process'])
         self.__param.setdefault('moveFlavor', 'Replication')
@@ -251,7 +260,7 @@ class Param(object):
         if 'tag' in self.__param:
             self.__param['tags'] = [self.__param['tag']]
         else:
-            self.__param['tags'] = parseList(self.__param.get('tags', ''))
+            self.__param['tags'] = parseList(self.__param.get('tags', 'Single'))
 
     @property
     def param(self):
@@ -287,30 +296,9 @@ class ProdMove(object):
             t.setTransformationGroup(self.__transGroup)
         t.setPlugin(self.__plugin)
 
-#        t.setSourceSE(self.__sourceSE)
         t.setTargetSE(self.__targetSE)
 
         transBody = []
-
-#        transBody.append(
-#            ("ReplicateAndRegister", {"TargetSE": ','.join(self.__targetSE)}))
-
-#        for tse in self.__targetSE:
-#            sse = list(set(self.__sourceSE) - set([tse]))
-#            transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(sse), "TargetSE": ','.join(tse)}))
-#
-#        if self.__flavour == 'Moving':
-#            for sse in self.__sourceSE:
-#                if sse in self.__targetSE:
-#                    continue
-#                gLogger.debug('Remove from SE: {0}'.format(sse))
-#                transBody.append(("RemoveReplica", {"TargetSE": ','.join(sse)}))
-#
-#        transBody.append(("ReplicateAndRegister", {"SourceSE": ','.join(
-#            self.__sourceSE), "TargetSE": ','.join(self.__targetSE)}))
-#        if self.__flavour == 'Moving':
-#            transBody.append(
-#                ("RemoveReplica", {"TargetSE": ','.join(self.__sourceSE)}))
 
         t.setBody(transBody)
 
@@ -470,9 +458,7 @@ class ProdChain(object):
         gLogger.notice('Owner: {0}'.format(self.__owner))
         gLogger.notice('OwnerGroup: {0}'.format(self.__ownerGroup))
         gLogger.notice('VO: {0}'.format(self.__vo))
-        gLogger.notice('OutputRoot: {0}'.format(self.__outputRoot))
         gLogger.notice('ProdRoot: {0}'.format(self.__prodRoot))
-        gLogger.notice('ProdPrefix: {0}'.format(self.__prodPrefix))
 
     def __ownerAndGroup(self):
         res = getProxyInfo(False, False)
@@ -493,8 +479,9 @@ class ProdChain(object):
                 key = 'process'
             else:
                 key = d
-            outputPath = os.path.join(outputPath, self.__param[d])
-            _setMetaData(outputPath, {key: self.__param[key]})
+            if self.__param[d]:
+                outputPath = os.path.join(outputPath, self.__param[d])
+                _setMetaData(outputPath, {key: self.__param[key]})
 
         self.__prodRoot = outputPath
 
@@ -549,16 +536,6 @@ class ProdChain(object):
 
         return m.groups(), m.groupdict()
 
-    def __convertTagParam(self, tagParam):
-        if not self.__param['tagParamConverter']:
-            return
-        try:
-            exec(self.__param['tagParamConverter'], {},
-                 {'paramList': tagParam[0], 'paramDict': tagParam[1]})
-        except Exception as e:
-            gLogger.error('Convert tag param error: {0}'.format(e))
-            raise
-
     def createStep(self, application, tag, tagParam, transType, prevApp=None):
         transID = self.__getTransID(tag, application)
         if transID:
@@ -579,7 +556,6 @@ class ProdChain(object):
             gLogger.notice('{0}: Input transformation "{1}" from "{2}" with meta userdata={3}'.format(
                 application, inputMeta['transID'], prevApp, inputMeta['userdata']))
         
-        #print "inputMeta", inputMeta
         step_mode = self.__param.get(
             application + '-mode', '').format(*tagParam[0], **tagParam[1])
         step_preScripts = self.__param.get(
@@ -664,7 +640,6 @@ class ProdChain(object):
         for tag in self.__param['tags']:
             if not self.__param['ignoreWorkflow']:
                 tagParam = self.__parseTagParam(tag)
-                self.__convertTagParam(tagParam)
                 gLogger.notice(
                     '\nTag "{0}" with param: {1}'.format(tag, tagParam))
 
