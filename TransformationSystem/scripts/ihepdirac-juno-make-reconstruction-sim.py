@@ -139,6 +139,26 @@ def _getMetaData(directory):
         return {}
     return res['Value']
 
+def _checkProxy():
+    """checks if the proxy has the ProductionManagement property and belongs to a VO"""
+    proxyInfo = getProxyInfo()
+    gLogger.debug("DEBUG: the proxyInfo used now: %s\n", proxyInfo)
+    if not proxyInfo['OK']:
+      gLogger.error("ERROR: No Proxy present")
+      return False
+    proxyValues = proxyInfo.get('Value', {})
+    group = proxyValues.get('group', '')
+
+    groupProperties = proxyValues.get('groupProperties', [])
+
+    if groupProperties:
+      if 'ProductionManagement' not in groupProperties:
+        gLogger.error("ERROR: Not allowed to create production, you need a ProductionManagement proxy.")
+        return False
+    else:
+      gLogger.error("ERROR: Could not determine Proxy properties, you do not have the right proxy.")
+      return False
+    return True
 
 class Param(object):
     def __init__(self, configFile='', paramCmd={}):
@@ -603,6 +623,11 @@ class ProdChain(object):
 
 
 def main():
+
+    if not _checkProxy():
+       gLogger.error('ERROR: You don\'t have proper proxy to use prodSys!')
+       return 1
+
     args = Script.getPositionalArgs()
     switches = Script.getUnprocessedSwitches()
 
